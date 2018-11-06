@@ -77,12 +77,12 @@ jobs:
         - contrib/devtools/logprint-scanner.py
         - if [ "$TRAVIS_EVENT_TYPE" = "pull_request" ]; then contrib/devtools/lint-whitespace.sh; fi
 # ARM
-    - stage: test
-      env: >-
-        HOST=arm-linux-gnueabihf
-        PACKAGES="g++-arm-linux-gnueabihf"
-        GOAL="install"
-        BITCOIN_CONFIG="--enable-glibc-back-compat --enable-reduce-exports"
+    #- stage: test
+      #env: >-
+        #HOST=arm-linux-gnueabihf
+        #PACKAGES="g++-arm-linux-gnueabihf"
+        #GOAL="install"
+        #BITCOIN_CONFIG="--enable-glibc-back-compat --enable-reduce-exports"
 # Win32
     - stage: test
       env: >-
