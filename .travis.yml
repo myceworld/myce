@@ -48,7 +48,7 @@ script:
   - make distdir PACKAGE=bitcoin VERSION=$HOST
   - cd bitcoin-$HOST
   - ./configure --cache-file=../config.cache $BITCOIN_CONFIG_ALL $BITCOIN_CONFIG || ( cat config.log && false)
-  - travis_wait 30 make $MAKEJOBS $GOAL || ( echo "Build failure. Verbose build follows." && make $GOAL V=1 ; false )
+  - make $MAKEJOBS $GOAL || ( echo "Build failure. Verbose build follows." && make $GOAL V=1 ; false )
   - export LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/depends/$HOST/lib
   - if [ "$RUN_TESTS" = "true" ]; then travis_wait 30 make $MAKEJOBS check VERBOSE=1; fi
   #- if [ "$RUN_TESTS" = "true" ]; then qa/pull-tester/rpc-tests.py --coverage; fi
@@ -80,9 +80,10 @@ jobs:
     - stage: test
       env: >-
         HOST=arm-linux-gnueabihf
+        DEP_OPTS="NO_QT=1"
         PACKAGES="g++-arm-linux-gnueabihf"
         GOAL="install"
-        BITCOIN_CONFIG="--enable-glibc-back-compat --enable-reduce-exports"
+        BITCOIN_CONFIG="--enable-glibc-back-compat --enable-reduce-exports --disable-tests --without-gui"
 # Win32
     - stage: test
       env: >-
