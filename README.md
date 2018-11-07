@@ -1,4 +1,4 @@
-Myce 2.0 upgrade [![Build Status](https://travis-ci.com/myceworld/myce.svg?branch=master)](https://travis-ci.com/myceworld/myce)
+Myce 2.0 upgrade 
 =====================================
 
 Open your current wallet > File > Backup Wallet > Save the generated wallet.dat on a safe location
