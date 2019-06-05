@@ -1,7 +1,7 @@
 // Copyright (c) 2011-2014 The Bitcoin developers
 // Copyright (c) 2014-2015 The Dash developers
-// Copyright (c) 2015-2018 The Pivx developers 
-// Copyright (c) 2018 The Myce developers
+// Copyright (c) 2015-2018 The PIVX developers
+// Copyright (c) 2015-2019 The Myce developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -183,13 +183,13 @@ void OverviewPage::getPercentage(CAmount nUnlockedBalance, CAmount nZerocoinBala
     }
 
     double dPercentage = 100.0 - dzPercentage;
-    
+
     szYCEPercentage = "(" + QLocale(QLocale::system()).toString(dzPercentage, 'f', nPrecision) + " %)";
     sYCEPercentage = "(" + QLocale(QLocale::system()).toString(dPercentage, 'f', nPrecision) + " %)";
-    
+
 }
 
-void OverviewPage::setBalance(const CAmount& balance, const CAmount& unconfirmedBalance, const CAmount& immatureBalance, 
+void OverviewPage::setBalance(const CAmount& balance, const CAmount& unconfirmedBalance, const CAmount& immatureBalance,
                               const CAmount& zerocoinBalance, const CAmount& unconfirmedZerocoinBalance, const CAmount& immatureZerocoinBalance,
                               const CAmount& watchOnlyBalance, const CAmount& watchUnconfBalance, const CAmount& watchImmatureBalance)
 {
@@ -209,14 +209,19 @@ void OverviewPage::setBalance(const CAmount& balance, const CAmount& unconfirmed
         nLockedBalance = pwalletMain->GetLockedCoins();
         nWatchOnlyLockedBalance = pwalletMain->GetLockedWatchOnlyBalance();
     }
+
     // YCE Balance
-    CAmount nTotalBalance = balance + unconfirmedBalance + nLockedBalance;
-    CAmount yceAvailableBalance = balance - immatureBalance;
-    CAmount nTotalWatchBalance = watchOnlyBalance + watchUnconfBalance + watchImmatureBalance;    
-    CAmount nUnlockedBalance = nTotalBalance - nLockedBalance - nLockedBalance; // increment nLockedBalance twice because it was added to
-                                                                                // nTotalBalance above
+    CAmount nTotalBalance = balance + unconfirmedBalance;
+    CAmount yceAvailableBalance = balance - immatureBalance - nLockedBalance;
+    CAmount nUnlockedBalance = nTotalBalance - nLockedBalance;
+
+    // YCE Watch-Only Balance
+    CAmount nTotalWatchBalance = watchOnlyBalance + watchUnconfBalance;
+    CAmount nAvailableWatchBalance = watchOnlyBalance - watchImmatureBalance - nWatchOnlyLockedBalance;
+
     // zYCE Balance
     CAmount matureZerocoinBalance = zerocoinBalance - unconfirmedZerocoinBalance - immatureZerocoinBalance;
+
     // Percentages
     QString szPercentage = "";
     QString sPercentage = "";
@@ -233,7 +238,7 @@ void OverviewPage::setBalance(const CAmount& balance, const CAmount& unconfirmed
     ui->labelTotal->setText(BitcoinUnits::floorHtmlWithUnit(nDisplayUnit, nTotalBalance, false, BitcoinUnits::separatorAlways));
 
     // Watchonly labels
-    ui->labelWatchAvailable->setText(BitcoinUnits::floorHtmlWithUnit(nDisplayUnit, watchOnlyBalance, false, BitcoinUnits::separatorAlways));
+    ui->labelWatchAvailable->setText(BitcoinUnits::floorHtmlWithUnit(nDisplayUnit, nAvailableWatchBalance, false, BitcoinUnits::separatorAlways));
     ui->labelWatchPending->setText(BitcoinUnits::floorHtmlWithUnit(nDisplayUnit, watchUnconfBalance, false, BitcoinUnits::separatorAlways));
     ui->labelWatchImmature->setText(BitcoinUnits::floorHtmlWithUnit(nDisplayUnit, watchImmatureBalance, false, BitcoinUnits::separatorAlways));
     ui->labelWatchLocked->setText(BitcoinUnits::floorHtmlWithUnit(nDisplayUnit, nWatchOnlyLockedBalance, false, BitcoinUnits::separatorAlways));
@@ -255,7 +260,7 @@ void OverviewPage::setBalance(const CAmount& balance, const CAmount& unconfirmed
 
     // Adjust bubble-help according to AutoMint settings
     QString automintHelp = tr("Current percentage of zYCE.\nIf AutoMint is enabled this percentage will settle around the configured AutoMint percentage (default = 10%).\n");
-    bool fEnableZeromint = GetBoolArg("-enablezeromint", true);
+    bool fEnableZeromint = GetBoolArg("-enablezeromint", false);
     int nZeromintPercentage = GetArg("-zeromintpercentage", 10);
     if (fEnableZeromint) {
         automintHelp += tr("AutoMint is currently enabled and set to ") + QString::number(nZeromintPercentage) + "%.\n";
@@ -268,30 +273,42 @@ void OverviewPage::setBalance(const CAmount& balance, const CAmount& unconfirmed
     // Only show most balances if they are non-zero for the sake of simplicity
     QSettings settings;
     bool settingShowAllBalances = !settings.value("fHideZeroBalances").toBool();
+
     bool showSumAvailable = settingShowAllBalances || sumTotalBalance != availableTotalBalance;
     ui->labelBalanceTextz->setVisible(showSumAvailable);
     ui->labelBalancez->setVisible(showSumAvailable);
-    bool showYCEAvailable = settingShowAllBalances || yceAvailableBalance != nTotalBalance;
-    bool showWatchOnlyYCEAvailable = watchOnlyBalance != nTotalWatchBalance;
-    bool showYCEPending = settingShowAllBalances || unconfirmedBalance != 0;
-    bool showWatchOnlyYCEPending = watchUnconfBalance != 0;
-    bool showYCELocked = settingShowAllBalances || nLockedBalance != 0;
-    bool showWatchOnlyYCELocked = nWatchOnlyLockedBalance != 0;
-    bool showImmature = settingShowAllBalances || immatureBalance != 0;
-    bool showWatchOnlyImmature = watchImmatureBalance != 0;
+
     bool showWatchOnly = nTotalWatchBalance != 0;
-    ui->labelBalance->setVisible(showYCEAvailable || showWatchOnlyYCEAvailable);
+
+    // YCE Available
+    bool showYCEAvailable = settingShowAllBalances || yceAvailableBalance != nTotalBalance;
+    bool showWatchOnlyYCEAvailable = showYCEAvailable || nAvailableWatchBalance != nTotalWatchBalance;
     ui->labelBalanceText->setVisible(showYCEAvailable || showWatchOnlyYCEAvailable);
-    ui->labelWatchAvailable->setVisible(showYCEAvailable && showWatchOnly);
-    ui->labelUnconfirmed->setVisible(showYCEPending || showWatchOnlyYCEPending);
+    ui->labelBalance->setVisible(showYCEAvailable || showWatchOnlyYCEAvailable);
+    ui->labelWatchAvailable->setVisible(showWatchOnlyYCEAvailable && showWatchOnly);
+
+    // YCE Pending
+    bool showYCEPending = settingShowAllBalances || unconfirmedBalance != 0;
+    bool showWatchOnlyYCEPending = showYCEPending || watchUnconfBalance != 0;
     ui->labelPendingText->setVisible(showYCEPending || showWatchOnlyYCEPending);
-    ui->labelWatchPending->setVisible(showYCEPending && showWatchOnly);
-    ui->labelLockedBalance->setVisible(showYCELocked || showWatchOnlyYCELocked);
+    ui->labelUnconfirmed->setVisible(showYCEPending || showWatchOnlyYCEPending);
+    ui->labelWatchPending->setVisible(showWatchOnlyYCEPending && showWatchOnly);
+
+    // YCE Immature
+    bool showYCEImmature = settingShowAllBalances || immatureBalance != 0;
+    bool showWatchOnlyImmature = showYCEImmature || watchImmatureBalance != 0;
+    ui->labelImmatureText->setVisible(showYCEImmature || showWatchOnlyImmature);
+    ui->labelImmature->setVisible(showYCEImmature || showWatchOnlyImmature); // for symmetry reasons also show immature label when the watch-only one is shown
+    ui->labelWatchImmature->setVisible(showWatchOnlyImmature && showWatchOnly); // show watch-only immature balance
+
+    // YCE Locked
+    bool showYCELocked = settingShowAllBalances || nLockedBalance != 0;
+    bool showWatchOnlyYCELocked = showYCELocked || nWatchOnlyLockedBalance != 0;
     ui->labelLockedBalanceText->setVisible(showYCELocked || showWatchOnlyYCELocked);
-    ui->labelWatchLocked->setVisible(showYCELocked && showWatchOnly);
-    ui->labelImmature->setVisible(showImmature || showWatchOnlyImmature); // for symmetry reasons also show immature label when the watch-only one is shown
-    ui->labelImmatureText->setVisible(showImmature || showWatchOnlyImmature);
-    ui->labelWatchImmature->setVisible(showImmature && showWatchOnly); // show watch-only immature balance
+    ui->labelLockedBalance->setVisible(showYCELocked || showWatchOnlyYCELocked);
+    ui->labelWatchLocked->setVisible(showWatchOnlyYCELocked && showWatchOnly);
+
+    // zYCE
     bool showzYCEAvailable = settingShowAllBalances || zerocoinBalance != matureZerocoinBalance;
     bool showzYCEUnconfirmed = settingShowAllBalances || unconfirmedZerocoinBalance != 0;
     bool showzYCEImmature = settingShowAllBalances || immatureZerocoinBalance != 0;
@@ -301,6 +318,8 @@ void OverviewPage::setBalance(const CAmount& balance, const CAmount& unconfirmed
     ui->labelzBalanceUnconfirmedText->setVisible(showzYCEUnconfirmed);
     ui->labelzBalanceImmature->setVisible(showzYCEImmature);
     ui->labelzBalanceImmatureText->setVisible(showzYCEImmature);
+
+    // Percent split
     bool showPercentages = ! (zerocoinBalance == 0 && nTotalBalance == 0);
     ui->labelYCEPercent->setVisible(showPercentages);
     ui->labelzYCEPercent->setVisible(showPercentages);
@@ -362,9 +381,9 @@ void OverviewPage::setWalletModel(WalletModel* model)
 
         // Keep up to date with wallet
         setBalance(model->getBalance(), model->getUnconfirmedBalance(), model->getImmatureBalance(),
-                   model->getZerocoinBalance(), model->getUnconfirmedZerocoinBalance(), model->getImmatureZerocoinBalance(), 
+                   model->getZerocoinBalance(), model->getUnconfirmedZerocoinBalance(), model->getImmatureZerocoinBalance(),
                    model->getWatchBalance(), model->getWatchUnconfirmedBalance(), model->getWatchImmatureBalance());
-        connect(model, SIGNAL(balanceChanged(CAmount, CAmount, CAmount, CAmount, CAmount, CAmount, CAmount, CAmount, CAmount)), this, 
+        connect(model, SIGNAL(balanceChanged(CAmount, CAmount, CAmount, CAmount, CAmount, CAmount, CAmount, CAmount, CAmount)), this,
                          SLOT(setBalance(CAmount, CAmount, CAmount, CAmount, CAmount, CAmount, CAmount, CAmount, CAmount)));
 
         connect(model->getOptionsModel(), SIGNAL(displayUnitChanged(int)), this, SLOT(updateDisplayUnit()));

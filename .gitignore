@@ -71,7 +71,7 @@ src/qt/test/moc*.cpp
 *.trs
 *.dmg
 
-*.json.h
+src/test/data/*.json.h
 *.raw.h
 
 #libtool object files

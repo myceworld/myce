@@ -43,10 +43,12 @@
 #include <QDesktopWidget>
 #include <QDragEnterEvent>
 #include <QIcon>
+#include <QLabel>
 #include <QListWidget>
 #include <QMenuBar>
 #include <QMessageBox>
 #include <QMimeData>
+#include <QPixmap>
 #include <QProgressBar>
 #include <QProgressDialog>
 #include <QSettings>
@@ -94,6 +96,7 @@ BitcoinGUI::BitcoinGUI(const NetworkStyle* networkStyle, QWidget* parent) : QMai
                                                                             multisigSignAction(0),
                                                                             aboutAction(0),
                                                                             receiveCoinsAction(0),
+                                                                            governanceAction(0),
                                                                             privacyAction(0),
                                                                             optionsAction(0),
                                                                             toggleHideAction(0),
@@ -115,8 +118,6 @@ BitcoinGUI::BitcoinGUI(const NetworkStyle* networkStyle, QWidget* parent) : QMai
 {
     /* Open CSS when configured */
     this->setStyleSheet(GUIUtil::loadStyleSheet());
-      this->setFixedSize(QSize(740, 420));
-      this->setWindowFlags(windowFlags() ^ Qt::WindowMaximizeButtonHint);
 
       GUIUtil::restoreWindowGeometry("nWindow", QSize(850, 550), this);
 
@@ -217,8 +218,8 @@ BitcoinGUI::BitcoinGUI(const NetworkStyle* networkStyle, QWidget* parent) : QMai
         frameBlocksLayout->addWidget(labelEncryptionIcon);
         frameBlocksLayout->addStretch();
         frameBlocksLayout->addWidget(labelStakingIcon);
-        frameBlocksLayout->addStretch();
-        frameBlocksLayout->addWidget(labelAutoMintIcon);
+/*         frameBlocksLayout->addStretch();
+        frameBlocksLayout->addWidget(labelAutoMintIcon); */
     }
 #endif // ENABLE_WALLET
     frameBlocksLayout->addWidget(labelTorIcon);
@@ -402,6 +403,17 @@ void BitcoinGUI::createActions(const NetworkStyle* networkStyle)
         connect(masternodeAction, SIGNAL(triggered()), this, SLOT(gotoMasternodePage()));
     }
 
+    governanceAction = new QAction(QIcon(":/icons/governance"), tr("&Governance"), this);
+    governanceAction->setStatusTip(tr("Show Proposals"));
+    governanceAction->setToolTip(governanceAction->statusTip());
+    governanceAction->setCheckable(true);
+#ifdef Q_OS_MAC
+    governanceAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_7));
+#else
+    governanceAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_7));
+#endif
+    tabGroup->addAction(governanceAction);
+
     // These showNormalIfMinimized are needed because Send Coins and Receive Coins
     // can be triggered from the tray menu, and need to show the GUI to be useful.
     connect(overviewAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
@@ -414,6 +426,7 @@ void BitcoinGUI::createActions(const NetworkStyle* networkStyle)
     connect(privacyAction, SIGNAL(triggered()), this, SLOT(gotoPrivacyPage()));
     connect(historyAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
     connect(historyAction, SIGNAL(triggered()), this, SLOT(gotoHistoryPage()));
+    connect(governanceAction, SIGNAL(triggered()), this, SLOT(gotoGovernancePage()));
 #endif // ENABLE_WALLET
 
     quitAction = new QAction(tr("E&xit"), this);
@@ -588,15 +601,21 @@ void BitcoinGUI::createToolBars()
         QToolBar* toolbar = new QToolBar(tr("Tabs toolbar"));
         toolbar->setObjectName("Main-Toolbar"); // Name for CSS addressing
         toolbar->setToolButtonStyle(Qt::ToolButtonIconOnly);
+        QWidget *logoWidget = new QWidget();
+        logoWidget->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+        logoWidget->setMinimumSize(84, 84);
+        logoWidget->setMaximumSize(84, 84);
+        logoWidget->setVisible(true);
+        
+        QLabel *logo = new QLabel();
+        logo->setPixmap(QPixmap(":/images/myce_logo"));
+        logo->setScaledContents(true);
+        
+        QHBoxLayout *logoLayout = new QHBoxLayout();
+        logoLayout->addWidget(logo);
+        logoWidget->setLayout(logoLayout);
 
-        QWidget *spacerWidget = new QWidget();
-                spacerWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-                spacerWidget->setMinimumSize(76, 0);
-                spacerWidget->setMaximumSize(76, 2);
-                spacerWidget->setVisible(true);
-                spacerWidget->setStyleSheet("background-color:transparent;");
-
-                toolbar->addWidget(spacerWidget);
+        toolbar->addWidget(logoWidget);
 
         toolbar->addAction(overviewAction);
         toolbar->addAction(sendCoinsAction);
@@ -607,20 +626,12 @@ void BitcoinGUI::createToolBars()
         if (settings.value("fShowMasternodesTab").toBool()) {
             toolbar->addAction(masternodeAction);
         }
+        toolbar->addAction(governanceAction);
 
-
-                QWidget *spacerWidget2 = new QWidget();
-                        spacerWidget2->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-                        spacerWidget2->setMinimumSize(76, 0);
-                        spacerWidget2->setMaximumSize(76, 2);
-                        spacerWidget2->setVisible(true);
-                        spacerWidget2->setStyleSheet("background-color:transparent;");
-
-                        toolbar->addWidget(spacerWidget2);
 
         toolbar->setMovable(false); // remove unused icon in upper left corner
         toolbar->setOrientation(Qt::Vertical);
-        toolbar->setIconSize(QSize(40,40));
+        toolbar->setIconSize(QSize(32,32));
         overviewAction->setChecked(true);
 
         /** Create additional container for toolbar and walletFrame and make it the central widget.
@@ -848,6 +859,12 @@ void BitcoinGUI::gotoMasternodePage()
         masternodeAction->setChecked(true);
         if (walletFrame) walletFrame->gotoMasternodePage();
     }
+}
+
+void BitcoinGUI::gotoGovernancePage()
+{
+    governanceAction->setChecked(true);
+    if (walletFrame) walletFrame->gotoGovernancePage();
 }
 
 void BitcoinGUI::gotoReceiveCoinsPage()

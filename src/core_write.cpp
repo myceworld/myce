@@ -36,7 +36,7 @@ string FormatScript(const CScript& script)
             } else if ((op >= OP_1 && op <= OP_16) || op == OP_1NEGATE) {
                 ret += strprintf("%i ", op - OP_1NEGATE - 1);
                 continue;
-            } else if (op >= OP_NOP && op <= OP_CHECKMULTISIGVERIFY) {
+            } else if (op >= OP_NOP && op < FIRST_UNDEFINED_OP_VALUE) {
                 string str(GetOpName(op));
                 if (str.substr(0, 3) == string("OP_")) {
                     ret += str.substr(3, string::npos) + " ";
@@ -93,10 +93,11 @@ void TxToUniv(const CTransaction& tx, const uint256& hashBlock, UniValue& entry)
 {
     entry.pushKV("txid", tx.GetHash().GetHex());
     entry.pushKV("version", tx.nVersion);
+    entry.pushKV("size", (int)::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION));
     entry.pushKV("locktime", (int64_t)tx.nLockTime);
 
     UniValue vin(UniValue::VARR);
-    BOOST_FOREACH (const CTxIn& txin, tx.vin) {
+    for (const CTxIn& txin : tx.vin) {
         UniValue in(UniValue::VOBJ);
         if (tx.IsCoinBase())
             in.pushKV("coinbase", HexStr(txin.scriptSig.begin(), txin.scriptSig.end()));
@@ -121,7 +122,7 @@ void TxToUniv(const CTransaction& tx, const uint256& hashBlock, UniValue& entry)
 
         UniValue outValue(UniValue::VNUM, FormatMoney(txout.nValue));
         out.pushKV("value", outValue);
-        out.pushKV("n", (int64_t)i);
+        out.pushKV("n", int64_t(i));
 
         UniValue o(UniValue::VOBJ);
         ScriptPubKeyToUniv(txout.scriptPubKey, o, true);

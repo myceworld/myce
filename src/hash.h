@@ -16,7 +16,6 @@
 #include "version.h"
 
 #include "crypto/sha512.h"
-#include "scrypt.h"
 
 #include <iomanip>
 #include <openssl/sha.h>
@@ -279,6 +278,11 @@ uint256 SerializeHash(const T& obj, int nType = SER_GETHASH, int nVersion = PROT
 unsigned int MurmurHash3(unsigned int nHashSeed, const std::vector<unsigned char>& vDataToHash);
 
 void BIP32Hash(const ChainCode chainCode, unsigned int nChild, unsigned char header, const unsigned char data[32], unsigned char output[64]);
+
+uint256 scrypt_salted_multiround_hash(const void* input, size_t inputlen, const void* salt, size_t saltlen, const unsigned int nRounds);
+uint256 scrypt_salted_hash(const void* input, size_t inputlen, const void* salt, size_t saltlen);
+uint256 scrypt_hash(const void* input, size_t inputlen);
+uint256 scrypt_blockhash(const void* input);
 
 //int HMAC_SHA512_Init(HMAC_SHA512_CTX *pctx, const void *pkey, size_t len);
 //int HMAC_SHA512_Update(HMAC_SHA512_CTX *pctx, const void *pdata, size_t len);

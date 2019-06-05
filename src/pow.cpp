@@ -42,16 +42,19 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
         return Params().ProofOfWorkLimit().GetCompact();
     }
 
-    if (pindexLast->nHeight >= Params().POS_START_BLOCK()) {
-        uint256 bnTargetLimit = (~uint256(0) >> 20);
-        int64_t nTargetSpacing = 60;
-        int64_t nTargetTimespan = 60 * 10;
+    int nHeight = pindexLast->nHeight + 1;
+
+    if (nHeight >= Params().POS_START_BLOCK()) {
+        uint256 bnTargetLimit = fProofOfStake ? (~uint256(0) >> 20) : Params().ProofOfWorkLimit();
+        int64_t nTargetSpacingOld = 60;
 
         int64_t nActualSpacing = 0;
 
         const CBlockIndex* pindexPrev = GetLastBlockIndex(pindexLast, fProofOfStake);
         const CBlockIndex* pindexPrevPrev = GetLastBlockIndex(pindexPrev->pprev, fProofOfStake);
-        nActualSpacing = pindexPrev->GetBlockTime() - pindexPrevPrev->GetBlockTime();
+
+        if(pindexPrev && pindexPrevPrev)
+            nActualSpacing = pindexPrev->GetBlockTime() - pindexPrevPrev->GetBlockTime();
 
         if (nActualSpacing < 0)
             nActualSpacing = 1;
@@ -61,15 +64,24 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
         uint256 bnNew;
         bnNew.SetCompact(pindexPrev->nBits);
 
-        int64_t nInterval = nTargetTimespan / nTargetSpacing;
-        bnNew *= ((nInterval - 1) * nTargetSpacing + nActualSpacing + nActualSpacing);
-        bnNew /= ((nInterval + 1) * nTargetSpacing);
+        if (nHeight >= Params().ModifierUpgradeBlock() || Params().NetworkID() != CBaseChainParams::MAIN) {
+            bnNew *= ((Params().Interval() - 1) * Params().TargetSpacing() + nActualSpacing + nActualSpacing);
+            bnNew /= ((Params().Interval() + 1) * Params().TargetSpacing());
+        }
+        else {
+            int64_t nInterval = Params().TargetTimespan() / nTargetSpacingOld;
+            bnNew *= ((nInterval - 1) * nTargetSpacingOld + nActualSpacing + nActualSpacing);
+            bnNew /= ((nInterval + 1) * nTargetSpacingOld);
+        }
 
-        int height = pindexLast->nHeight + 1;
+        if (Params().NetworkID() == CBaseChainParams::MAIN) {
+            if (nHeight < (Params().WALLET_UPGRADE_BLOCK()+10) && nHeight >= Params().WALLET_UPGRADE_BLOCK())
+                bnNew *= (int)pow(4.0, 10.0+Params().WALLET_UPGRADE_BLOCK()-nHeight); // slash difficulty and gradually ramp back up over 10 blocks
 
-        if (height < (Params().WALLET_UPGRADE_BLOCK()+10) && height >= Params().WALLET_UPGRADE_BLOCK())
-            bnNew *= (int)pow(4.0, (double)(10+Params().WALLET_UPGRADE_BLOCK()-height)); // slash difficulty and gradually ramp back up over 10 blocks
-
+            if (nHeight < (Params().ModifierUpgradeBlock()+10) && nHeight >= Params().ModifierUpgradeBlock())
+                bnNew *= (int)pow(4.0, 10.0+Params().ModifierUpgradeBlock()-nHeight); // slash difficulty and gradually ramp back up over 10 blocks
+        }
+        
         if (bnNew <= 0 || bnNew > bnTargetLimit)
             bnNew = bnTargetLimit;
 
@@ -162,7 +174,7 @@ unsigned int GetLegacyNextWorkRequired(const CBlockIndex* pindexLast, const CBlo
     return bnNew.GetCompact();
 }
 
-bool CheckProofOfWork(uint256 hash, int nVersion, unsigned int nBits)
+bool CheckProofOfWork(uint256 hash, unsigned int nBits)
 {
     bool fNegative;
     bool fOverflow;
@@ -178,7 +190,7 @@ bool CheckProofOfWork(uint256 hash, int nVersion, unsigned int nBits)
         return error("CheckProofOfWork() : nBits below minimum work");
 
     // Check proof of work matches claimed amount
-    if (nVersion >= Params().WALLET_UPGRADE_VERSION() && hash > bnTarget)
+    if (hash.GetCompact() > bnTarget)
         return error("CheckProofOfWork() : hash doesn't match nBits");
 
     return true;

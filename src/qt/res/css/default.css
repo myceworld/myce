@@ -5,17 +5,15 @@
 
 WalletFrame {
 border-top:0px solid #000;
-background-repeat: repeat;
-background-image: url(':/images/walletFrame_bg');
-background-color: transparent;
-background-size: cover;
-background-position: left top;
+background-color: qlineargradient(x1: 0.5, y1: 0.5 x2: 1, y2: 0.5, stop: 0 #5337b5, stop: 0.7 #6300b7 );
+
 height: 100%;
 visibility: inherit;
 }
 
 QStatusBar {
 background-color:#2a2b34;
+color:#a1a3a7;
 border-style: none;
 font-size:13px;
 }
@@ -67,28 +65,34 @@ color:#e4e4e6;
 }
 
 QToolBar {
-background-image: url(':/images/toolbar');
-border-style:none;
-margin-right:-1px;
+background-color: #3e1959;
+margin: 0;
+padding: 0;
+padding-left: 10px;
+padding-top: 10px;
+border-right: 1px solid #29195f;
 }
 
 QToolBar > QToolButton {
 Alignment: center;
 color:#fff;
-width: 41px;
-height: 41px;
+width: 66px;
+height: 66px;
 background-color:#3e1959;
-border: 2px solid;
+border: 0px solid;
 border-color:#3e1959;
 color:#fff;
 font-size:0px;
 font-weight:normal;
-margin: 2px;
-padding:10px;
-border-top-left-radius: 15px;
-border-top-right-radius: 15px;
-border-bottom-right-radius: 15px;
-border-bottom-left-radius: 15px;
+border-top-left-radius: 10px;
+border-top-right-radius: 10px;
+border-bottom-right-radius: 10px;
+border-bottom-left-radius: 10px;
+margin-top: 3px;
+margin-bottom: 3px;
+margin-left: 0;
+margin-right: 0;
+padding: 0;
 }
 
 QToolBar > QToolButton:checked {
@@ -109,18 +113,12 @@ color:#fff;
 /* QToolBar > QToolButton:hover:!selected { */
 
 QToolBar > QToolButton:hover {
-background-color:#3e1959;
-border: 2px solid;
-border-color:#7042a0;
+background-color:#5c2a82;
 color:#333;
 }
 
-QToolBar > QToolButton#ToolbarSpacer:hover:!selected {
-background-color: #372f44; /* Do not highlight placeholder on hover */
-}
-
 QToolBar > QToolButton:pressed {
-background-color: #d5436b;
+background-color: #5c2a82;
 color:#fff;
 }
 
@@ -178,12 +176,6 @@ background-color:#fcfcfc;
 color:#fff;
 }
 
-QToolTip {
-background-color:#292c36;
-color:#fff;
-padding:2px;
-font-size:13px;
-}
 
 QTextEdit {
 background-color:#fff;
@@ -997,13 +989,10 @@ border:1px solid #372f44;
 QLabel#labelOverviewHeaderLeft {
 font-weight:bold;
 font-size:20px;
-background-color:#ffffff;
 }
 
 QLabel#labelOverviewHeaderRight {
 qproperty-alignment: 'AlignVCenter | AlignRight';
-background-image: url(':/images/myce_logo_horizontal');
-background-repeat: no-repeat;
 }
 
 QWidget .QFrame#frame_Header { /* Header with Page-Title and MYCE-image */
@@ -1020,7 +1009,6 @@ background-color:transparent;
 /**************************** OVERVIEW SCREEN *******************************************/
 
 QWidget .QFrame#frame_home {
-background-image: url(':/images/walletFrame_bg_home');
 }
 
 
@@ -1163,7 +1151,7 @@ background-color:transparent;
 }
 
 QDialog#SendCoinsDialog .QFrame#frameFee { /* Coin Control Section */
-background-color:transparent;
+background-color:#654bbc;
 }
 
 QDialog#SendCoinsDialog .QFrame#frame_Send { /* Coin Control Section */
@@ -1259,7 +1247,7 @@ min-height:27px;
 
 QStackedWidget#SendCoinsEntry .QFrame#SendCoins {
 
-background-color:rgba(255,255,255, 0.1);
+background-color:#654bbc;
 border-radius:10px;
 
 }
@@ -1449,7 +1437,7 @@ background-color:transparent;
 }
 
 QWidget#ReceiveCoinsDialog .QFrame#frame2 {
-background-color:rgba(255,255,255, 0.1);
+background-color:#654bbc;
 border-radius:10px;
 }
 
@@ -1490,7 +1478,7 @@ font-size:14px;
 }
 
 QWidget#ReceiveCoinsDialog .QFrame#frame_recentRequestsView {
-background-color:rgba(255,255,255, 0.1);
+background-color:#654bbc;
 
 }
 
@@ -1572,7 +1560,7 @@ background-color:transparent;
 }
 
 QWidget#MasternodeList .QFrame#frameTableBg {
-background-color:rgba(255,255,255, 0.1);
+background-color:#654bbc;
 }
 
 
@@ -1606,4 +1594,102 @@ color:#333;
 
 QCalendarWidget QAbstractItemView:disabled { /* Calendar widget days not in month */
 color:#818181;
+}
+
+QWidget#GovernancePage .QFrame#frame_Content {
+    color: #fff;
+}
+
+QWidget#GovernancePage .QFrame#frame_budget_info QLabel {
+    color: #fff;
+}
+
+QWidget#GovernancePage .ProposalFrame {
+    border-radius:5px;
+    font-size: 12px;
+    margin-left:5px;
+    margin-right:5px;
+    margin-bottom: 5px;
+    min-height:120px;
+}
+
+QWidget#GovernancePage .ProposalFrame QLabel {
+    margin: 0;
+    padding: 0;
+}
+
+QWidget#GovernancePage .ProposalFrame#proposalFrame {
+    background-color:qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0, stop: 0 #9179c7, stop: 1 #b396f6);
+    border:1px solid #b396f6;
+    margin: 0;
+    padding: 0;
+}
+
+QWidget#GovernancePage .ProposalFrame#proposalFramePassing {
+    background-color:qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0, stop: 0 #00cc00, stop: 1 #00ef00);
+    border:1px solid #00ef00;
+    margin: 0;
+    padding:0;
+}
+
+QWidget#GovernancePage .ProposalFrame#proposalFrameNotEstablished {
+    background-color:qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0, stop: 0 #0080ff, stop: 1 #00a3ff);
+    border:1px solid #00a3ff;
+    margin: 0;
+    padding:0;
+}
+
+QWidget#GovernancePage .ProposalFrame#proposalFramePassingUnfunded {
+    background-color:qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0, stop: 0 #cccc00, stop: 1 #efef00);
+    border:1px solid #efef00;
+    margin: 0;
+    padding:0;
+}
+
+QWidget#GovernancePage .ProposalFrame > QLabel#strProposalName, QLabel#strMonthlyPayout {
+    font-size:16px;
+    font-weight: bold;
+    margin: 0;
+    padding:0;
+}
+
+QWidget#GovernancePage .ProposalFrame > QLabel#strRemainingPaymentCount {
+    font-size:12px;
+    margin-bottom: 10px;    
+    margin: 0;
+    padding:0;
+}
+
+QWidget#GovernancePage .ProposalFrame > QLabel#strProposalURL {
+    font-size:12px;
+    margin-top: 8px;
+    margin-bottom: 8px;
+    margin: 0;
+    padding:0;
+}
+
+QWidget#GovernancePage .QScrollArea {
+    background-color: rgba(0,0,0,0.1);
+    border-radius: 7px;
+    margin: 0;
+    padding: 0;
+    margin-bottom: 16px;
+}
+
+QWidget#GovernancePage .QWidget#scrollAreaWidgetContents {
+    background-color: transparent;
+    margin:0;
+    padding:0;
+}
+
+QWidget#GovernancePage .QWidget#scrollAreaWidgetContents {
+    background-color: transparent;
+    margin:0;
+    padding:0;
+}
+
+QWidget#GovernancePage .QGridLayout#proposalGrid {
+    background-color: rgba(255,255,255,0.1);
+    margin: 0;
+    padding: 0;
 }

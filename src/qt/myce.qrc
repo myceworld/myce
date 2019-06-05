@@ -33,6 +33,7 @@
         <file alias="history">res/icons/history.png</file>
         <file alias="overview">res/icons/overview.png</file>
         <file alias="masternodes">res/icons/masternodes.png</file>
+        <file alias="governance">res/icons/governance.png</file>
         <file alias="export">res/icons/export.png</file>
         <file alias="synced">res/icons/synced.png</file>
         <file alias="remove">res/icons/remove.png</file>
@@ -57,14 +58,18 @@
         <file alias="staking_inactive">res/icons/staking_inactive.png</file>
         <file alias="automint_active">res/icons/automint_active.png</file>
         <file alias="automint_inactive">res/icons/automint_inactive.png</file>
+        <file alias="explorer">res/icons/explorer.png</file>
         <file alias="onion">res/icons/onion.png</file>
+        <file alias="yesvote">res/icons/yesvote.png</file>
+        <file alias="novote">res/icons/novote.png</file>
+        <file alias="abstainvote">res/icons/abstainvote.png</file>
     </qresource>
     <qresource prefix="/css">
         <file alias="default">res/css/default.css</file>
     </qresource>
     <qresource prefix="/images">
         <file alias="about">res/images/about.png</file>
-        <file alias="myce_logo_horizontal">res/images/myce_logo_horizontal.png</file>
+        <file alias="myce_logo">res/images/myce-logo.png</file>
         <file alias="downArrow">res/images/downArrow_dark.png</file>
         <file alias="downArrow_small">res/images/downArrow_small_dark.png</file>
         <file alias="downArrow_small_white">res/images/downArrow_small.png</file>
@@ -73,12 +78,8 @@
         <file alias="leftArrow_small">res/images/leftArrow_small_dark.png</file>
         <file alias="rightArrow_small">res/images/rightArrow_small_dark.png</file>
         <file alias="qtreeview_selected">res/images/qtreeview_selected.png</file>
-        <file alias="walletFrame_bg">res/images/walletFrame_bg.png</file>
-        <file alias="walletFrame">res/images/walletFrame.png</file>
         <file alias="splash">res/images/splash.png</file>
         <file alias="splash_testnet">res/images/splash_testnet.png</file>
-        <file alias="toolbar">res/images/toolbar.png</file>
-        <file alias="walletFrame_bg_home">res/images/walletFrame_bg_home.png</file>
     </qresource>
     <qresource prefix="/movies">
         <file alias="spinner-000">res/movies/spinner-000.png</file>

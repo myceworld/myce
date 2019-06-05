@@ -56,13 +56,22 @@ static Checkpoints::MapCheckpoints mapCheckpoints =
     boost::assign::map_list_of
     (0, uint256("0000c74cc66c72cb1a327c5c1d4893ae5276aa50be49fb23cec21df1a2f20d87"))
     (245145, uint256("d74019fd6d432b34e05febb5a8c32ca9e0ab500f21c378f1debcd8c939a59d95"))
-    (341500, uint256("769f485854697c20088703e205017b96853f1a0bfbd288110bed45d39a3a60b4"));
+    (341500, uint256("769f485854697c20088703e205017b96853f1a0bfbd288110bed45d39a3a60b4"))
+    (378499, uint256("6aeb973ee1318ff18f69685dcf7052b1769fc90f8412d0388a8b9d3fdaae9ae1"))
+    (378500, uint256("cecc0636b6b5c41cc852d45976243fe010a74797eeb056c1c3ee481b20c17d82"))
+    (378501, uint256("032beb9154a0ae6cab2b6daaa6e9ba32468dae193fd78f745e875d3d2cdbec39"))
+    (382600, uint256("552836176069ce72494583d566ee0427abb47b32c70138cb0a16a6fa8608caf1"))
+    (384200, uint256("fab86b440d95a252b477128bd325153106a7220e3c7b5cbc74542f68945aa4f7"))
+    (412450, uint256("32e0e14e4b18d2ef1b598f03a86496a690709899141e70885e2e23c0533985a4"))
+    (525000, uint256("eb7f2d1c91266719c5323f41920cd963ffa7f79a01dacf41601046b06e182ff5"))
+    (584800, uint256("73ede8b55f2054c14cf7cbade19fedcc18f5b3ea5d1a931e6f3a996ee46bbf57"))
+    (609500, uint256("24303d0ec828ace9b375d6ccd4bfd63d279f670d6e39a232603583b4c893a9de"));
 static const Checkpoints::CCheckpointData data = {
     &mapCheckpoints,
-    1525106065, // * UNIX timestamp of last checkpoint block
-    0,    // * total number of transactions between genesis and last checkpoint
+    1553475955, // * UNIX timestamp of last checkpoint block
+    1223664,    // * total number of transactions between genesis and last checkpoint
                 //   (the tx=... number in the SetBestChain debug.log lines)
-    2000        // * estimated number of transactions per day after checkpoint
+    4000        // * estimated number of transactions per day after checkpoint
 };
 
 static Checkpoints::MapCheckpoints mapCheckpointsTestnet =
@@ -115,16 +124,16 @@ public:
         pchMessageStart[1] = 0x23;
         pchMessageStart[2] = 0x43;
         pchMessageStart[3] = 0x65;
-        vAlertPubKey = ParseHex("0358d5fb8000c49d38aaab6dc5d0c0a0322eff3090eff026963eb819dc3dec8439");
+        vAlertPubKey = ParseHex("03f012092c5fe9ed406b43316fc87d8ace9e8eb7764999db00ef60009ddddfa723");
         nDefaultPort = 23511;
-        bnProofOfWorkLimit = ~uint256(0) >> 16; // Myce starting difficulty is 1 / 2^12
+        bnProofOfWorkLimit = ~uint256(0) >> 16;
         nMaxReorganizationDepth = 100;
-        nEnforceBlockUpgradeMajority = 750;
-        nRejectBlockOutdatedMajority = 950;
-        nToCheckBlockUpgradeMajority = 1000;
+        nEnforceBlockUpgradeMajority = 8100; // 75%
+        nRejectBlockOutdatedMajority = 10260; // 95%
+        nToCheckBlockUpgradeMajority = 10800; // Approximate expected amount of blocks in 7 days (1440*7.5)
         nMinerThreads = 0;
-        nTargetTimespan = 1 * 60; // Myce: 1 day
-        nTargetSpacing = 1 * 60;  // Myce: 1 minute
+        nTargetTimespan = 10 * 60; // Myce: 10 minutes
+        nTargetSpacing = 64; // Myce: 64 seconds
         nMaturity = 5;
         nMasternodeCountDrift = 20;
         nMaxMoneyOut = 250000000 * COIN;
@@ -134,18 +143,18 @@ public:
         nPOSStartBlock = 10000;
         nMandatoryUpgradeBlock = 378500;
         nUpgradeBlockVersion = 8;                                   // Block headers must be this version after upgrade block
-        nZerocoinStartHeight = 9999999;                             // OFF
-        nZerocoinStartTime = 4000000000;                            // OFF
-        nModifierUpdateBlock = nZerocoinStartHeight - 1;
-        nBlockEnforceSerialRange = nZerocoinStartHeight + 2;        // Enforce serial range starting this block
-        nBlockRecalculateAccumulators = nZerocoinStartHeight + 3;   // Trigger a recalculation of accumulators
-        nBlockFirstFraudulent = nZerocoinStartHeight + 1;           // First block that bad serials emerged
-        nBlockLastGoodCheckpoint = nZerocoinStartHeight + 3;        // Last valid accumulator checkpoint
-        nBlockEnforceInvalidUTXO = nZerocoinStartHeight - 1;        // Start enforcing the invalid UTXO's
+        nZerocoinStartHeight = 2100000000;                          // OFF
+        //nZerocoinStartTime = 4000000000;
+        nModifierUpdateBlock = 710000;
+        nBlockEnforceSerialRange = -1;                              // Enforce serial range starting this block
+        nBlockRecalculateAccumulators = nZerocoinStartHeight + 10;  // Trigger a recalculation of accumulators
+        nBlockFirstFraudulent = nZerocoinStartHeight;               // First block that bad serials emerged
+        nBlockLastGoodCheckpoint = nZerocoinStartHeight;            // Last valid accumulator checkpoint
+        nBlockEnforceInvalidUTXO = -1;                              // Start enforcing the invalid UTXO's
         nInvalidAmountFiltered = 0*COIN;                            // Amount of invalid coins filtered through exchanges, that should be considered valid
-        nBlockZerocoinV2 = nZerocoinStartHeight + 10;               // The block that zerocoin v2 becomes active
-        nEnforceNewSporkKey = 1525158000;                           // Sporks signed after (GMT): Tuesday, May 1, 2018 7:00:00 AM GMT must use the new spork key
-        nRejectOldSporkKey = 1527811200;                            // Fully reject old spork key after (GMT): Friday, June 1, 2018 12:00:00 AM
+        nBlockZerocoinV2 = nZerocoinStartHeight + 20;               // The block that zerocoin v2 becomes active
+        nEnforceNewSporkKey = 1559844000;                           // Sporks signed after (GMT): Thursday, June 6, 2019 18:00:00 GMT must use the new spork key
+        nRejectOldSporkKey = nEnforceNewSporkKey;                   // Fully reject old spork key after (GMT): Thursday, June 6, 2019 18:00:00
 
         /**
          * Build the genesis block. Note that the output of the genesis coinbase cannot
@@ -179,7 +188,11 @@ public:
         assert(genesis.hashMerkleRoot == uint256("0x8ea58063fe9e14c45dbf5efab5b3812291074f6b1af5305b7b45647bdbfdea90"));
         assert(hashGenesisBlock == uint256("0x0000c74cc66c72cb1a327c5c1d4893ae5276aa50be49fb23cec21df1a2f20d87"));
 
-        vSeeds.push_back(CDNSSeedData("1", "zentec.ddns.net"));
+        vSeeds.push_back(CDNSSeedData("1", "seed1.myce.world"));
+        vSeeds.push_back(CDNSSeedData("2", "seed2.myce.world"));
+        vSeeds.push_back(CDNSSeedData("3", "seed3.myce.world"));
+        vSeeds.push_back(CDNSSeedData("4", "seed4.myce.world"));
+        vSeeds.push_back(CDNSSeedData("5", "seed5.myce.world"));
 
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1, 50);
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1, 85);
@@ -197,12 +210,12 @@ public:
         fMineBlocksOnDemand = false;
         fSkipProofOfWorkCheck = false;
         fTestnetToBeDeprecatedFieldRPC = false;
-        fHeadersFirstSyncingActive = true;
+        fHeadersFirstSyncingActive = false;
 
         nPoolMaxTransactions = 3;
-        strSporkKey = "0358d5fb8000c49d38aaab6dc5d0c0a0322eff3090eff026963eb819dc3dec8439";
-        strSporkKeyOld = "046f78dcf911fbd61910136f7f0f8d90578f68d0b3ac973b5040fb7afb501b5939f39b108b0569dca71488f5bbf498d92e4d1194f6f941307ffd95f75e76869f0e";
-        strObfuscationPoolDummyAddress = "MRaVnHZizkREBg6yBzcpy6TBLn4B5GbUva";
+        strSporkKey = "03f012092c5fe9ed406b43316fc87d8ace9e8eb7764999db00ef60009ddddfa723";
+        strSporkKeyOld = "0358d5fb8000c49d38aaab6dc5d0c0a0322eff3090eff026963eb819dc3dec8439";
+        strObfuscationPoolDummyAddress = "MKuuMqXZj75T2UidnBWotoN8oQavbyVenR";
         nStartMasternodePayments = 1403728576; //Wed, 25 Jun 2014 20:36:16 GMT
 
         /** Zerocoin */
@@ -217,7 +230,7 @@ public:
         nMintRequiredConfirmations = 20; //the maximum amount of confirmations until accumulated in 19
         nRequiredAccumulation = 1;
         nDefaultSecurityLevel = 100; //full security level for accumulators
-        nZerocoinHeaderVersion = nUpgradeBlockVersion + 1; //Block headers must be this version once zerocoin is active
+        nZerocoinHeaderVersion = 10; //Block headers must be this version once zerocoin is active
         nZerocoinRequiredStakeDepth = 200; //The required confirmations for a zyce to be stakable
 
         nBudget_Fee_Confirmations = 6; // Number of confirmations for the finalization fee
@@ -244,28 +257,29 @@ public:
         pchMessageStart[1] = 0x44;
         pchMessageStart[2] = 0x56;
         pchMessageStart[3] = 0x78;
-        vAlertPubKey = ParseHex("0358d5fb8000c49d38aaab6dc5d0c0a0322eff3090eff026963eb819dc3dec8439");
+        vAlertPubKey = ParseHex("022b2e19232d63dc26cab94a43576480c36027c9496a7d349fbaad467ce9a7a2b7");
         nDefaultPort = 20114;
-        nEnforceBlockUpgradeMajority = 51;
-        nRejectBlockOutdatedMajority = 75;
-        nToCheckBlockUpgradeMajority = 100;
+        nEnforceBlockUpgradeMajority = 4320; // 75%
+        nRejectBlockOutdatedMajority = 5472; // 95%
+        nToCheckBlockUpgradeMajority = 5760; // 4 days
         nMinerThreads = 0;
-        nTargetTimespan = 1 * 60; // Myce: 1 day
-        nTargetSpacing = 1 * 60;  // Myce: 1 minute
-        nLastPOWBlock = 200;
+        nTargetTimespan = 10 * 60; // Myce: 10 minutes
+        nTargetSpacing = 48; // Myce: 48 seconds
+        nLastPOWBlock = 2100000000;
+        nPOSStartBlock = 100;
         nMaturity = 15;
         nMasternodeCountDrift = 4;
-        nModifierUpdateBlock = 51197; //approx Mon, 17 Apr 2017 04:00:00 GMT
+        nModifierUpdateBlock = -1; //approx Mon, 17 Apr 2017 04:00:00 GMT
         nMaxMoneyOut = 43199500 * COIN;
-        nZerocoinStartHeight = 201576;
-        nZerocoinStartTime = 1501776000;
-        nBlockEnforceSerialRange = 1; //Enforce serial range starting this block
-        nBlockRecalculateAccumulators = 9908000; //Trigger a recalculation of accumulators
-        nBlockFirstFraudulent = 9891737; //First block that bad serials emerged
-        nBlockLastGoodCheckpoint = 9891730; //Last valid accumulator checkpoint
-        nBlockEnforceInvalidUTXO = 9902850; //Start enforcing the invalid UTXO's
+        nZerocoinStartHeight = 2100000000;
+        //nZerocoinStartTime = 1501776000;
+        nBlockEnforceSerialRange = -1; //Enforce serial range starting this block
+        nBlockRecalculateAccumulators = nZerocoinStartHeight + 10; //Trigger a recalculation of accumulators
+        nBlockFirstFraudulent = nZerocoinStartHeight; //First block that bad serials emerged
+        nBlockLastGoodCheckpoint = nZerocoinStartHeight; //Last valid accumulator checkpoint
+        nBlockEnforceInvalidUTXO = -1; //Start enforcing the invalid UTXO's
         nInvalidAmountFiltered = 0; //Amount of invalid coins filtered through exchanges, that should be considered valid
-        nBlockZerocoinV2 = 444020; //!> The block that zerocoin v2 becomes active
+        nBlockZerocoinV2 = nZerocoinStartHeight + 20; //!> The block that zerocoin v2 becomes active
         nEnforceNewSporkKey = 1521604800; //!> Sporks signed after Wednesday, March 21, 2018 4:00:00 AM GMT must use the new spork key
         nRejectOldSporkKey = 1522454400; //!> Reject old spork key after Saturday, March 31, 2018 12:00:00 AM GMT
 
@@ -279,6 +293,8 @@ public:
 
         vFixedSeeds.clear();
         vSeeds.clear();
+
+        vSeeds.push_back(CDNSSeedData("1", "testnet.myce.world"));
 
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1, 139); // Testnet myce addresses start with 'x' or 'y'
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1, 19);  // Testnet myce script addresses start with '8' or '9'
@@ -300,12 +316,13 @@ public:
         fTestnetToBeDeprecatedFieldRPC = true;
 
         nPoolMaxTransactions = 2;
-        strSporkKey = "04A8B319388C0F8588D238B9941DC26B26D3F9465266B368A051C5C100F79306A557780101FE2192FE170D7E6DEFDCBEE4C8D533396389C0DAFFDBC842B002243C";
-        strSporkKeyOld = "04348C2F50F90267E64FACC65BFDC9D0EB147D090872FB97ABAE92E9A36E6CA60983E28E741F8E7277B11A7479B626AC115BA31463AC48178A5075C5A9319D4A38";
-        strObfuscationPoolDummyAddress = "y57cqfGRkekRyDRNeJiLtYVEbvhXrNbmox";
+        strSporkKey = "022b2e19232d63dc26cab94a43576480c36027c9496a7d349fbaad467ce9a7a2b7";
+        strSporkKeyOld = "022b2e19232d63dc26cab94a43576480c36027c9496a7d349fbaad467ce9a7a2b7";
+        strObfuscationPoolDummyAddress = "y9zEimieLbYccV8jAVuD1EcsfPfm3gywyK";
         nStartMasternodePayments = 1420837558; //Fri, 09 Jan 2015 21:05:58 GMT
         nBudget_Fee_Confirmations = 3; // Number of confirmations for the finalization fee. We have to make this very short
                                        // here because we only have a 8 block finalization window on testnet
+        nZerocoinHeaderVersion = 10; //Block headers must be this version once zerocoin is active
     }
     const Checkpoints::CCheckpointData& Checkpoints() const
     {
@@ -333,8 +350,8 @@ public:
         nRejectBlockOutdatedMajority = 950;
         nToCheckBlockUpgradeMajority = 1000;
         nMinerThreads = 1;
-        nTargetTimespan = 24 * 60 * 60; // Myce: 1 day
-        nTargetSpacing = 1 * 60;        // Myce: 1 minutes
+        nTargetTimespan = 10 * 60; // Myce: 10 minutes
+        nTargetSpacing = 48; // Myce: 48 seconds
         bnProofOfWorkLimit = ~uint256(0) >> 1;
         genesis.nTime = 1454124731;
         genesis.nBits = 0x207fffff;
