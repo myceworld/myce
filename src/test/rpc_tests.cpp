@@ -71,7 +71,7 @@ BOOST_AUTO_TEST_CASE(rpc_rawparams)
     BOOST_CHECK_THROW(CallRPC("decoderawtransaction"), runtime_error);
     BOOST_CHECK_THROW(CallRPC("decoderawtransaction null"), runtime_error);
     BOOST_CHECK_THROW(CallRPC("decoderawtransaction DEADBEEF"), runtime_error);
-    string rawtx = "0100000001a15d57094aa7a21a28cb20b59aab8fc7d1149a3bdbcddba9c622e4f5f6a99ece010000006c493046022100f93bb0e7d8db7bd46e40132d1f8242026e045f03a0efe71bbb8e3f475e970d790221009337cd7f1f929f00cc6ff01f03729b069a7c21b59b1736ddfee5db5946c5da8c0121033b9b137ee87d5a812d6f506efdd37f0affa7ffc310711c06c7f3e097c9447c52ffffffff0100e1f505000000001976a9140389035a9225b3839e2bbf32d826a1e222031fd888ac00000000";
+    string rawtx = "01000000761c985a010000000000000000000000000000000000000000000000000000000000000000ffffffff03510101ffffffff0100ba1dd2050000001976a9143486936725524200810a429852fd1af23967b8fb88ac00000000";
     BOOST_CHECK_NO_THROW(r = CallRPC(string("decoderawtransaction ")+rawtx));
     BOOST_CHECK_EQUAL(find_value(r.get_obj(), "version").get_int(), 1);
     BOOST_CHECK_EQUAL(find_value(r.get_obj(), "locktime").get_int(), 0);
@@ -97,14 +97,14 @@ BOOST_AUTO_TEST_CASE(rpc_rawsign)
     UniValue r;
     // input is a 1-of-2 multisig (so is output):
     string prevout =
-      "[{\"txid\":\"dd2888870cdc3f6e92661f6b0829667ee4bb07ed086c44205e726bbf3338f726\","
-      "\"vout\":1,\"scriptPubKey\":\"a914f5404a39a4799d8710e15db4c4512c5e06f97fed87\","
-      "\"redeemScript\":\"5121021431a18c7039660cd9e3612a2a47dc53b69cb38ea4ad743b7df8245fd0438f8e21029bbeff390ce736bd396af43b52a1c14ed52c086b1e5585c15931f68725772bac52ae\"}]";
+      "[{\"txid\":\"a46c7d66a7375e2e9c7e599eaba134e3615a28f0f8ef7abb67ee39d94df402d5\","
+      "\"vout\":0,\"scriptPubKey\":\"a91442701e136e3511edf8f6ad98caf412a5fcb2e96787\","
+      "\"redeemScript\":\"512103391ef29de5f845563101d04f5ec0700792ba29dea926b24ebd6d3e13a0801cb721033d28760dd79f96ec868b55be26a9e55dbc82d5c824c01dd0f81df128901f3a2252ae\"}]";
     r = CallRPC(string("createrawtransaction ")+prevout+" "+
-      "{\"6ckcNMWRYgTnPcrTXCdwhDnMLwj3zwseej\":1}");
+      "{\"MDnRKKAMY4oqGT1dshkmp1wwEU4ZVr9x1k\":1}");
     string notsigned = r.get_str();
-    string privkey1 = "\"YVobcS47fr6kceZy9LzLJR8WQ6YRpUwYKoJhrnEXepebMxaSpbnn\"";
-    string privkey2 = "\"YRyMjG8hbm8jHeDMAfrzSeHq5GgAj7kuHFvJtMudCUH3sCkq1WtA\"";
+    string privkey1 = "\"PfeoHnJAgZ5hZK1oAYkGadxY86xvprPHfaF3ccmn1FGwFdrDFZt8\"";
+    string privkey2 = "\"PjPR8syC4ae4ZmwWD93j5RuBvEExSJkfcU8HFPkCR4Cr626vSZcJ\"";
     r = CallRPC(string("signrawtransaction ")+notsigned+" "+prevout+" "+"[]");
     BOOST_CHECK(find_value(r.get_obj(), "complete").get_bool() == false);
     r = CallRPC(string("signrawtransaction ")+notsigned+" "+prevout+" "+"["+privkey1+","+privkey2+"]");

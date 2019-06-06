@@ -11,7 +11,7 @@
 #include "util.h"
 #include "init.h"
 #include "uint256.h"
-#include "scrypt.h"
+#include "hash.h"
 
 #include <boost/foreach.hpp>
 #include <openssl/aes.h>
