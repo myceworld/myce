@@ -1238,11 +1238,11 @@ void BitcoinGUI::setStakingStatus()
 void BitcoinGUI::setAutoMintStatus()
 {
     if (fEnableZeromint) {
-        labelAutoMintIcon->show();
+        labelAutoMintIcon->hide();
         labelAutoMintIcon->setIcon(QIcon(":/icons/automint_active").pixmap(STATUSBAR_ICONSIZE, STATUSBAR_ICONSIZE));
         labelAutoMintIcon->setToolTip(tr("AutoMint is currently enabled and set to ") + QString::number(nZeromintPercentage) + "%.\n");
     } else {
-        labelAutoMintIcon->show();
+        labelAutoMintIcon->hide();
         labelAutoMintIcon->setIcon(QIcon(":/icons/automint_inactive").pixmap(STATUSBAR_ICONSIZE, STATUSBAR_ICONSIZE));
         labelAutoMintIcon->setToolTip(tr("AutoMint is disabled"));
     }
