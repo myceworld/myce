@@ -104,12 +104,12 @@ static const unsigned int DATABASE_WRITE_INTERVAL = 3600;
 /** Maximum length of reject messages. */
 static const unsigned int MAX_REJECT_MESSAGE_LENGTH = 111;
 
-/** Default for -blockspamfilter, use header spam filter */
-static const bool DEFAULT_BLOCK_SPAM_FILTER = true;
-/** Default for -blockspamfiltermaxsize, maximum size of the list of indexes in the block spam filter */
-static const unsigned int DEFAULT_BLOCK_SPAM_FILTER_MAX_SIZE = 50;
-/** Default for -blockspamfiltermaxavg, maximum average size of an index occurrence in the block spam filter */
-static const unsigned int DEFAULT_BLOCK_SPAM_FILTER_MAX_AVG = 10;
+/** Default for -headerspamfilter, use header spam filter */
+static const bool DEFAULT_HEADER_SPAM_FILTER = true;
+/** Default for -headerspamfiltermaxsize, maximum size of the list of indexes in the header spam filter */
+static const unsigned int DEFAULT_HEADER_SPAM_FILTER_MAX_SIZE = 50;
+/** Default for -headerspamfiltermaxavg, maximum average size of an index occurrence in the header spam filter */
+static const unsigned int DEFAULT_HEADER_SPAM_FILTER_MAX_AVG = 10;
 
 /** Enable bloom filter */
 static const bool DEFAULT_PEERBLOOMFILTERS = true;

@@ -203,51 +203,60 @@ struct CBlockReject {
     uint256 hashBlock;
 };
 
-class CNodeBlocks
+class CNodeHeaders
 {
 public:
-    CNodeBlocks():
-            maxSize(0),
-            maxAvg(0)
+    CNodeHeaders():
+        maxSize(0),
+        maxAvg(0)
     {
-        maxSize = GetArg("-blockspamfiltermaxsize", DEFAULT_BLOCK_SPAM_FILTER_MAX_SIZE);
-        maxAvg = GetArg("-blockspamfiltermaxavg", DEFAULT_BLOCK_SPAM_FILTER_MAX_AVG);
+        maxSize = GetArg("-headerspamfiltermaxsize", DEFAULT_HEADER_SPAM_FILTER_MAX_SIZE);
+        maxAvg = GetArg("-headerspamfiltermaxavg", DEFAULT_HEADER_SPAM_FILTER_MAX_AVG);
     }
 
-    bool onBlockReceived(int nHeight) {
-        if(nHeight > 0 && maxSize && maxAvg) {
-            addPoint(nHeight);
+    bool addHeaders(int nBegin, int nEnd)
+    {
+
+        if (nBegin > 0 && nEnd > 0 && maxSize && maxAvg)
+        {
+
+            for(int point = nBegin; point<= nEnd; point++)
+            {
+                addPoint(point);
+            }
+
             return true;
         }
+
         return false;
     }
 
     bool updateState(CValidationState& state, bool ret)
     {
-        // No Blocks
+        // No headers
         size_t size = points.size();
-        if(size == 0)
+        if (size == 0)
             return ret;
 
-        // Compute the number of the received blocks
-        size_t nBlocks = 0;
-        for(auto point : points)
+        // Compute the number of the received headers
+        size_t nHeaders = 0;
+        for (auto point : points)
         {
-            nBlocks += point.second;
+            nHeaders += point.second;
         }
 
         // Compute the average value per height
-        double nAvgValue = (double)nBlocks / size;
+        double nAvgValue = (double)nHeaders / size;
 
         // Ban the node if try to spam
         bool banNode = (nAvgValue >= 1.5 * maxAvg && size >= maxAvg) ||
-                       (nAvgValue >= maxAvg && nBlocks >= maxSize) ||
-                       (nBlocks >= maxSize * 3);
-        if(banNode)
+                (nAvgValue >= maxAvg && nHeaders >= maxSize) ||
+                (nHeaders >= maxSize * 3);
+        if (banNode)
         {
             // Clear the points and ban the node
             points.clear();
-            return state.DoS(100, error("block-spam ban node for sending spam"));
+            return state.DoS(100, false, REJECT_INVALID, "header-spam", false);
         }
 
         return ret;
@@ -311,7 +320,7 @@ struct CNodeState {
     //! Whether we consider this a preferred download peer.
     bool fPreferredDownload;
 
-    CNodeBlocks nodeBlocks;
+    CNodeHeaders headers;
 
     CNodeState()
     {
@@ -4644,7 +4653,7 @@ bool ProcessNewBlock(CValidationState& state, CNode* pfrom, CBlock* pblock, CDis
     if (pblock->GetHash() != Params().HashGenesisBlock() && pfrom != NULL) {
         //if we get this far, check if the prev block is our prev block, if not then request sync and return false
         BlockMap::iterator mi = mapBlockIndex.find(pblock->hashPrevBlock);
-        if (mi == mapBlockIndex.end()) {
+        if (mi == mapBlockIndex.end() || !((*mi).second->nStatus & BLOCK_HAVE_DATA)) {
             pfrom->PushMessage("getblocks", chainActive.GetLocator(), uint256(0));
             return false;
         }
@@ -4659,33 +4668,14 @@ bool ProcessNewBlock(CValidationState& state, CNode* pfrom, CBlock* pblock, CDis
         }
 
         // Store to disk
-        CBlockIndex* pindex = nullptr;
-        bool ret = AcceptBlock (*pblock, state, &pindex, dbp, checked);
+        CBlockIndex* pindex = NULL;
+        bool ret = AcceptBlock(*pblock, state, &pindex, dbp, checked);
         if (pindex && pfrom) {
             mapBlockSource[pindex->GetBlockHash()] = pfrom->GetId();
         }
         CheckBlockIndex();
-        if (!ret) {
-            // Check spamming
-            if(pindex && pfrom && GetBoolArg("-blockspamfilter", DEFAULT_BLOCK_SPAM_FILTER)) {
-                CNodeState *nodestate = State(pfrom->GetId());
-                if(nodestate != nullptr) {
-                    nodestate->nodeBlocks.onBlockReceived(pindex->nHeight);
-                    bool nodeStatus = true;
-                    // UpdateState will return false if the node is attacking us or update the score and return true.
-                    nodeStatus = nodestate->nodeBlocks.updateState(state, nodeStatus);
-                    int nDoS = 0;
-                    if (state.IsInvalid(nDoS)) {
-                        if (nDoS > 0)
-                            Misbehaving(pfrom->GetId(), nDoS);
-                        nodeStatus = false;
-                    }
-                    if (!nodeStatus)
-                        return error("%s : AcceptBlock FAILED - block spam protection", __func__);
-                }
-            }
+        if (!ret)
             return error("%s : AcceptBlock FAILED", __func__);
-        }
     }
 
     if (!ActivateBestChain(state, pblock, checked))
@@ -6269,7 +6259,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
             }
         }
 
-/*         if (GetBoolArg("-headerspamfilter", DEFAULT_HEADER_SPAM_FILTER))
+        if (GetBoolArg("-headerspamfilter", DEFAULT_HEADER_SPAM_FILTER))
         {
             LOCK(cs_main);
             CValidationState state;
@@ -6284,7 +6274,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
                 strError = strError!="" ? strError + " / ": "";
                 strError = "header spam protection";
             }
-        } */
+        }
 
         if (!ret)
             return error(strError.c_str());
