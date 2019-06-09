@@ -13,13 +13,10 @@
 #include "tinyformat.h"
 #include "utilstrencodings.h"
 #include "util.h"
-#include "scrypt.h" 
-
-#define CVOIDBEGIN(a)        ((const void*)&(a)) 
 
 uint256 CBlockHeader::GetHash() const
 {
-    if (nVersion > 8)
+    if (nVersion > 9)
         return Hash(BEGIN(nVersion), END(nAccumulatorCheckpoint));
     else if (nVersion > 6)
         return Hash(BEGIN(nVersion), END(nNonce));

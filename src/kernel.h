@@ -12,9 +12,9 @@
 
 // MODIFIER_INTERVAL: time to elapse before new modifier is computed
 static const unsigned int MODIFIER_INTERVAL = 3 * 60;
-static const unsigned int MODIFIER_INTERVAL_TESTNET = 3 * 60;
+static const unsigned int MODIFIER_INTERVAL_TESTNET = 60;
 extern unsigned int nModifierInterval;
-extern unsigned int getIntervalVersion(bool fTestNet);
+extern unsigned int getIntervalVersion();
 
 // MODIFIER_INTERVAL_RATIO:
 // ratio of group interval length between the last group and the first group

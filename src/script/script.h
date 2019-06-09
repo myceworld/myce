@@ -23,6 +23,10 @@ typedef std::vector<unsigned char> valtype;
 
 static const unsigned int MAX_SCRIPT_ELEMENT_SIZE = 520; // bytes
 
+// Threshold for nLockTime: below this value it is interpreted as block number,
+// otherwise as UNIX timestamp.
+static const unsigned int LOCKTIME_THRESHOLD = 500000000; // Tue Nov  5 00:53:20 1985 UTC
+
 template <typename T>
 std::vector<unsigned char> ToByteVector(const T& in)
 {
@@ -41,7 +45,7 @@ enum opcodetype
     OP_1NEGATE = 0x4f,
     OP_RESERVED = 0x50,
     OP_1 = 0x51,
-    OP_TRUE=OP_1,
+    OP_TRUE = OP_1,
     OP_2 = 0x52,
     OP_3 = 0x53,
     OP_4 = 0x54,
@@ -93,9 +97,9 @@ enum opcodetype
 
     // splice ops
     OP_CAT = 0x7e,
-    OP_SUBSTR = 0x7f,
-    OP_LEFT = 0x80,
-    OP_RIGHT = 0x81,
+    OP_SPLIT = 0x7f,
+    OP_NUM2BIN = 0x80,
+    OP_BIN2NUM = 0x81,
     OP_SIZE = 0x82,
 
     // bit logic
@@ -151,11 +155,16 @@ enum opcodetype
     OP_CHECKSIGVERIFY = 0xad,
     OP_CHECKMULTISIG = 0xae,
     OP_CHECKMULTISIGVERIFY = 0xaf,
+    OP_DETERMINISTICRANDOM = 0xc0,
+    OP_CHECKSIGFROMSTACK = 0xd1, // conflicted with zerocoin
+    OP_CHECKSIGFROMSTACKVERIFY = 0xd2, // new values
 
     // expansion
     OP_NOP1 = 0xb0,
-    OP_NOP2 = 0xb1,
-    OP_NOP3 = 0xb2,
+    OP_CHECKLOCKTIMEVERIFY = 0xb1,
+    OP_NOP2 = OP_CHECKLOCKTIMEVERIFY,
+    OP_CHECKSEQUENCEVERIFY = 0xb2,
+    OP_NOP3 = OP_CHECKSEQUENCEVERIFY,
     OP_NOP4 = 0xb3,
     OP_NOP5 = 0xb4,
     OP_NOP6 = 0xb5,
@@ -168,6 +177,17 @@ enum opcodetype
     OP_ZEROCOINMINT = 0xc1,
     OP_ZEROCOINSPEND = 0xc2,
 
+    // More crypto
+    OP_CHECKDATASIG = 0xba,
+    OP_CHECKDATASIGVERIFY = 0xbb,
+
+    // The first op_code value after all defined opcodes
+    FIRST_UNDEFINED_OP_VALUE,
+
+    // multi-byte opcodes
+    OP_PREFIX_BEGIN = 0xf0,
+    OP_PREFIX_END = 0xf7,
+
     // template matching params
     OP_SMALLINTEGER = 0xfa,
     OP_PUBKEYS = 0xfb,
@@ -177,7 +197,7 @@ enum opcodetype
     OP_INVALIDOPCODE = 0xff,
 };
 
-const char* GetOpName(opcodetype opcode);
+const char *GetOpName(opcodetype opcode);
 
 class scriptnum_error : public std::runtime_error
 {
@@ -185,101 +205,150 @@ public:
     explicit scriptnum_error(const std::string& str) : std::runtime_error(str) {}
 };
 
-class CScriptNum
-{
-/**
- * Numeric opcodes (OP_1ADD, etc) are restricted to operating on 4-byte integers.
- * The semantics are subtle, though: operands must be in the range [-2^31 +1...2^31 -1],
- * but results may overflow (and are valid as long as they are not used in a subsequent
- * numeric operation). CScriptNum enforces those semantics by storing results as
- * an int64 and allowing out-of-range values to be returned as a vector of bytes but
- * throwing an exception if arithmetic is done or the result is interpreted as an integer.
- */
+class CScriptNum {
+    /**
+     * Numeric opcodes (OP_1ADD, etc) are restricted to operating on 4-byte
+     * integers. The semantics are subtle, though: operands must be in the range
+     * [-2^31 +1...2^31 -1], but results may overflow (and are valid as long as
+     * they are not used in a subsequent numeric operation). CScriptNum enforces
+     * those semantics by storing results as an int64 and allowing out-of-range
+     * values to be returned as a vector of bytes but throwing an exception if
+     * arithmetic is done or the result is interpreted as an integer.
+     */
 public:
+    explicit CScriptNum(const int64_t &n) { m_value = n; }
 
-    explicit CScriptNum(const int64_t& n)
-    {
-        m_value = n;
-    }
+    static const size_t nDefaultMaxNumSize = 4;
 
-    explicit CScriptNum(const std::vector<unsigned char>& vch, bool fRequireMinimal)
-    {
+    explicit CScriptNum(const std::vector<uint8_t> &vch, bool fRequireMinimal,
+                        const size_t nMaxNumSize = nDefaultMaxNumSize) {
         if (vch.size() > nMaxNumSize) {
             throw scriptnum_error("script number overflow");
         }
-        if (fRequireMinimal && vch.size() > 0) {
-            // Check that the number is encoded with the minimum possible
-            // number of bytes.
-            //
-            // If the most-significant-byte - excluding the sign bit - is zero
-            // then we're not minimal. Note how this test also rejects the
-            // negative-zero encoding, 0x80.
-            if ((vch.back() & 0x7f) == 0) {
-                // One exception: if there's more than one byte and the most
-                // significant bit of the second-most-significant-byte is set
-                // it would conflict with the sign bit. An example of this case
-                // is +-255, which encode to 0xff00 and 0xff80 respectively.
-                // (big-endian).
-                if (vch.size() <= 1 || (vch[vch.size() - 2] & 0x80) == 0) {
-                    throw scriptnum_error("non-minimally encoded script number");
-                }
-            }
+        if (fRequireMinimal && !IsMinimallyEncoded(vch, nMaxNumSize)) {
+            throw scriptnum_error("non-minimally encoded script number");
         }
         m_value = set_vch(vch);
     }
 
-    inline bool operator==(const int64_t& rhs) const    { return m_value == rhs; }
-    inline bool operator!=(const int64_t& rhs) const    { return m_value != rhs; }
-    inline bool operator<=(const int64_t& rhs) const    { return m_value <= rhs; }
-    inline bool operator< (const int64_t& rhs) const    { return m_value <  rhs; }
-    inline bool operator>=(const int64_t& rhs) const    { return m_value >= rhs; }
-    inline bool operator> (const int64_t& rhs) const    { return m_value >  rhs; }
+    static bool IsMinimallyEncoded(
+        const std::vector<uint8_t> &vch,
+        const size_t nMaxNumSize = CScriptNum::nDefaultMaxNumSize);
 
-    inline bool operator==(const CScriptNum& rhs) const { return operator==(rhs.m_value); }
-    inline bool operator!=(const CScriptNum& rhs) const { return operator!=(rhs.m_value); }
-    inline bool operator<=(const CScriptNum& rhs) const { return operator<=(rhs.m_value); }
-    inline bool operator< (const CScriptNum& rhs) const { return operator< (rhs.m_value); }
-    inline bool operator>=(const CScriptNum& rhs) const { return operator>=(rhs.m_value); }
-    inline bool operator> (const CScriptNum& rhs) const { return operator> (rhs.m_value); }
+    static bool MinimallyEncode(std::vector<uint8_t> &data);
 
-    inline CScriptNum operator+(   const int64_t& rhs)    const { return CScriptNum(m_value + rhs);}
-    inline CScriptNum operator-(   const int64_t& rhs)    const { return CScriptNum(m_value - rhs);}
-    inline CScriptNum operator+(   const CScriptNum& rhs) const { return operator+(rhs.m_value);   }
-    inline CScriptNum operator-(   const CScriptNum& rhs) const { return operator-(rhs.m_value);   }
+    inline bool operator==(const int64_t &rhs) const { return m_value == rhs; }
+    inline bool operator!=(const int64_t &rhs) const { return m_value != rhs; }
+    inline bool operator<=(const int64_t &rhs) const { return m_value <= rhs; }
+    inline bool operator<(const int64_t &rhs) const { return m_value < rhs; }
+    inline bool operator>=(const int64_t &rhs) const { return m_value >= rhs; }
+    inline bool operator>(const int64_t &rhs) const { return m_value > rhs; }
 
-    inline CScriptNum& operator+=( const CScriptNum& rhs)       { return operator+=(rhs.m_value);  }
-    inline CScriptNum& operator-=( const CScriptNum& rhs)       { return operator-=(rhs.m_value);  }
+    inline bool operator==(const CScriptNum &rhs) const {
+        return operator==(rhs.m_value);
+    }
+    inline bool operator!=(const CScriptNum &rhs) const {
+        return operator!=(rhs.m_value);
+    }
+    inline bool operator<=(const CScriptNum &rhs) const {
+        return operator<=(rhs.m_value);
+    }
+    inline bool operator<(const CScriptNum &rhs) const {
+        return operator<(rhs.m_value);
+    }
+    inline bool operator>=(const CScriptNum &rhs) const {
+        return operator>=(rhs.m_value);
+    }
+    inline bool operator>(const CScriptNum &rhs) const {
+        return operator>(rhs.m_value);
+    }
 
-    inline CScriptNum operator-()                         const
-    {
+    inline CScriptNum operator+(const int64_t &rhs) const {
+        return CScriptNum(m_value + rhs);
+    }
+    inline CScriptNum operator-(const int64_t &rhs) const {
+        return CScriptNum(m_value - rhs);
+    }
+    inline CScriptNum operator+(const CScriptNum &rhs) const {
+        return operator+(rhs.m_value);
+    }
+    inline CScriptNum operator-(const CScriptNum &rhs) const {
+        return operator-(rhs.m_value);
+    }
+
+    inline CScriptNum operator/(const int64_t &rhs) const {
+        return CScriptNum(m_value / rhs);
+    }
+    inline CScriptNum operator/(const CScriptNum &rhs) const {
+        return operator/(rhs.m_value);
+    }
+
+    inline CScriptNum operator*(const int64_t &rhs) const {
+        return CScriptNum(m_value * rhs);
+    }
+    inline CScriptNum operator*(const CScriptNum &rhs) const {
+        return operator*(rhs.m_value);
+    }
+
+    inline CScriptNum operator%(const int64_t &rhs) const {
+        return CScriptNum(m_value % rhs);
+    }
+    inline CScriptNum operator%(const CScriptNum &rhs) const {
+        return operator%(rhs.m_value);
+    }
+
+    inline CScriptNum &operator+=(const CScriptNum &rhs) {
+        return operator+=(rhs.m_value);
+    }
+    inline CScriptNum &operator-=(const CScriptNum &rhs) {
+        return operator-=(rhs.m_value);
+    }
+
+    inline CScriptNum operator&(const int64_t &rhs) const {
+        return CScriptNum(m_value & rhs);
+    }
+    inline CScriptNum operator&(const CScriptNum &rhs) const {
+        return operator&(rhs.m_value);
+    }
+
+    inline CScriptNum &operator&=(const CScriptNum &rhs) {
+        return operator&=(rhs.m_value);
+    }
+
+    inline CScriptNum operator-() const {
         assert(m_value != std::numeric_limits<int64_t>::min());
         return CScriptNum(-m_value);
     }
 
-    inline CScriptNum& operator=( const int64_t& rhs)
-    {
+    inline CScriptNum &operator=(const int64_t &rhs) {
         m_value = rhs;
         return *this;
     }
 
-    inline CScriptNum& operator+=( const int64_t& rhs)
-    {
-        assert(rhs == 0 || (rhs > 0 && m_value <= std::numeric_limits<int64_t>::max() - rhs) ||
-                           (rhs < 0 && m_value >= std::numeric_limits<int64_t>::min() - rhs));
+    inline CScriptNum &operator+=(const int64_t &rhs) {
+        assert(
+            rhs == 0 ||
+            (rhs > 0 && m_value <= std::numeric_limits<int64_t>::max() - rhs) ||
+            (rhs < 0 && m_value >= std::numeric_limits<int64_t>::min() - rhs));
         m_value += rhs;
         return *this;
     }
 
-    inline CScriptNum& operator-=( const int64_t& rhs)
-    {
-        assert(rhs == 0 || (rhs > 0 && m_value >= std::numeric_limits<int64_t>::min() + rhs) ||
-                           (rhs < 0 && m_value <= std::numeric_limits<int64_t>::max() + rhs));
+    inline CScriptNum &operator-=(const int64_t &rhs) {
+        assert(
+            rhs == 0 ||
+            (rhs > 0 && m_value >= std::numeric_limits<int64_t>::min() + rhs) ||
+            (rhs < 0 && m_value <= std::numeric_limits<int64_t>::max() + rhs));
         m_value -= rhs;
         return *this;
     }
 
-    int getint() const
-    {
+    inline CScriptNum &operator&=(const int64_t &rhs) {
+        m_value &= rhs;
+        return *this;
+    }
+
+    int getint() const {
         if (m_value > std::numeric_limits<int>::max())
             return std::numeric_limits<int>::max();
         else if (m_value < std::numeric_limits<int>::min())
@@ -307,25 +376,22 @@ public:
             absvalue >>= 8;
         }
 
-//    - If the most significant byte is >= 0x80 and the value is positive, push a
-//    new zero-byte to make the significant byte < 0x80 again.
-
-//    - If the most significant byte is >= 0x80 and the value is negative, push a
-//    new 0x80 byte that will be popped off when converting to an integral.
-
-//    - If the most significant byte is < 0x80 and the value is negative, add
-//    0x80 to it, since it will be subtracted and interpreted as a negative when
-//    converting to an integral.
-
-        if (result.back() & 0x80)
+        // - If the most significant byte is >= 0x80 and the value is positive,
+        // push a new zero-byte to make the significant byte < 0x80 again.
+        // - If the most significant byte is >= 0x80 and the value is negative,
+        // push a new 0x80 byte that will be popped off when converting to an
+        // integral.
+        // - If the most significant byte is < 0x80 and the value is negative,
+        // add 0x80 to it, since it will be subtracted and interpreted as a
+        // negative when converting to an integral.
+        if (result.back() & 0x80) {
             result.push_back(neg ? 0x80 : 0);
-        else if (neg)
+        } else if (neg) {
             result.back() |= 0x80;
+        }
 
         return result;
     }
-
-    static const size_t nMaxNumSize = 4;
 
 private:
     static int64_t set_vch(const std::vector<unsigned char>& vch)
@@ -342,7 +408,7 @@ private:
       if (vch.back() & 0x80)
           return -((int64_t)(result & ~(0x80ULL << (8 * (vch.size() - 1)))));
 
-      return result;
+        return result;
     }
 
     int64_t m_value;
@@ -374,27 +440,24 @@ public:
     CScript(const_iterator pbegin, const_iterator pend) : std::vector<unsigned char>(pbegin, pend) { }
     CScript(const unsigned char* pbegin, const unsigned char* pend) : std::vector<unsigned char>(pbegin, pend) { }
 
-    CScript& operator+=(const CScript& b)
-    {
+    CScript &operator+=(const CScript &b) {
         insert(end(), b.begin(), b.end());
         return *this;
     }
 
-    friend CScript operator+(const CScript& a, const CScript& b)
-    {
+    friend CScript operator+(const CScript &a, const CScript &b) {
         CScript ret = a;
         ret += b;
         return ret;
     }
 
-    CScript(int64_t b)        { operator<<(b); }
+    CScript(int64_t b) { operator<<(b); }
 
-    explicit CScript(opcodetype b)     { operator<<(b); }
-    explicit CScript(const CScriptNum& b) { operator<<(b); }
-    explicit CScript(const std::vector<unsigned char>& b) { operator<<(b); }
+    explicit CScript(opcodetype b) { operator<<(b); }
+    explicit CScript(const CScriptNum &b) { operator<<(b); }
+    explicit CScript(const std::vector<uint8_t> &b) { operator<<(b); }
 
-
-    CScript& operator<<(int64_t b) { return push_int64(b); }
+    CScript &operator<<(int64_t b) { return push_int64(b); }
 
     CScript& operator<<(opcodetype opcode)
     {
@@ -404,8 +467,7 @@ public:
         return *this;
     }
 
-    CScript& operator<<(const CScriptNum& b)
-    {
+    CScript &operator<<(const CScriptNum &b) {
         *this << b.getvch();
         return *this;
     }
@@ -437,11 +499,12 @@ public:
         return *this;
     }
 
-    CScript& operator<<(const CScript& b)
-    {
+    CScript &operator<<(const CScript &b) {
         // I'm not sure if this should push the script or concatenate scripts.
-        // If there's ever a use for pushing a script onto a script, delete this member fn
-        assert(!"Warning: Pushing a CScript onto a CScript with << is probably not intended, use + to concatenate!");
+        // If there's ever a use for pushing a script onto a script, delete this
+        // member fn.
+        assert(!"Warning: Pushing a CScript onto a CScript with << is probably "
+                "not intended, use + to concatenate!");
         return *this;
     }
 
@@ -577,19 +640,18 @@ public:
     }
 
     /**
-     * Pre-version-0.6, Bitcoin always counted CHECKMULTISIGs
-     * as 20 sigops. With pay-to-script-hash, that changed:
-     * CHECKMULTISIGs serialized in scriptSigs are
-     * counted more accurately, assuming they are of the form
+     * Pre-version-0.6, Bitcoin always counted CHECKMULTISIGs as 20 sigops. With
+     * pay-to-script-hash, that changed: CHECKMULTISIGs serialized in scriptSigs
+     * are counted more accurately, assuming they are of the form
      *  ... OP_N CHECKMULTISIG ...
      */
-    unsigned int GetSigOpCount(bool fAccurate) const;
+    uint32_t GetSigOpCount(uint32_t flags, bool fAccurate) const;
 
     /**
-     * Accurately count sigOps, including sigOps in
-     * pay-to-script-hash transactions:
+     * Accurately count sigOps, including sigOps in pay-to-script-hash
+     * transactions:
      */
-    unsigned int GetSigOpCount(const CScript& scriptSig) const;
+    uint32_t GetSigOpCount(uint32_t flags, const CScript &scriptSig) const;
 
     bool IsNormalPaymentScript() const;
     bool IsPayToScriptHash() const;

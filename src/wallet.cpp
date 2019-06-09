@@ -1204,7 +1204,7 @@ CAmount CWalletTx::GetLockedCredit() const
         }
 
         // Add masternode collaterals which are handled like locked coins
-        if (fMasterNode && vout[i].nValue == 100000 * COIN) {
+        else if (fMasterNode && vout[i].nValue == 100000 * COIN) {
             nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE);
         }
 
@@ -1323,7 +1323,7 @@ CAmount CWalletTx::GetLockedWatchOnlyCredit() const
         }
 
         // Add masternode collaterals which are handled like locked coins
-        if (fMasterNode && vout[i].nValue == 100000 * COIN) {
+        else if (fMasterNode && vout[i].nValue == 100000 * COIN) {
             nCredit += pwallet->GetCredit(txout, ISMINE_WATCH_ONLY);
         }
 
@@ -2107,7 +2107,7 @@ bool CWallet::SelectStakeCoins(std::list<std::unique_ptr<CStakeInput> >& listInp
                 continue;
 
             //check that it is matured
-            if (out.nDepth < (out.tx->IsCoinStake() ? Params().COINBASE_MATURITY() : 10))
+            if (out.nDepth < Params().COINBASE_MATURITY())
                 continue;
 
             //add to our stake set
@@ -2120,7 +2120,7 @@ bool CWallet::SelectStakeCoins(std::list<std::unique_ptr<CStakeInput> >& listInp
     }
 
     //zYCE
-    if (GetBoolArg("-zycestake", true) && chainActive.Height() > Params().Zerocoin_Block_V2_Start() && !IsSporkActive(SPORK_16_ZEROCOIN_MAINTENANCE_MODE)) {
+    if (GetBoolArg("-zycestake", true) && chainActive.Height() >= Params().Zerocoin_Block_V2_Start() && !IsSporkActive(SPORK_16_ZEROCOIN_MAINTENANCE_MODE)) {
         //Only update zYCE set once per update interval
         bool fUpdate = false;
         static int64_t nTimeLastUpdate = 0;
@@ -2157,6 +2157,9 @@ bool CWallet::MintableCoins()
     LOCK(cs_main);
     CAmount nBalance = GetBalance();
     CAmount nZyceBalance = GetZerocoinBalance(false);
+
+    if (IsInitialBlockDownload())
+        return false; // No coins to mint if we aren't synced
 
     // Regular YCE
     if (nBalance > 0) {
@@ -2642,7 +2645,7 @@ bool CWallet::GetBudgetSystemCollateralTX(CWalletTx& tx, uint256 hash, bool useI
     CAmount nFeeRet = 0;
     std::string strFail = "";
     vector<pair<CScript, CAmount> > vecSend;
-    vecSend.push_back(make_pair(scriptChange, BUDGET_FEE_TX_OLD)); // Old 50 YCE collateral
+    vecSend.push_back(make_pair(scriptChange, PROPOSAL_FEE_TX)); // 20 YCE collateral
 
     CCoinControl* coinControl = NULL;
     bool success = CreateTransaction(vecSend, tx, reservekey, nFeeRet, strFail, coinControl, ALL_COINS, useIX, (CAmount)0);
@@ -2665,7 +2668,7 @@ bool CWallet::GetBudgetFinalizationCollateralTX(CWalletTx& tx, uint256 hash, boo
     CAmount nFeeRet = 0;
     std::string strFail = "";
     vector<pair<CScript, CAmount> > vecSend;
-    vecSend.push_back(make_pair(scriptChange, BUDGET_FEE_TX)); // New 5 YCE collateral
+    vecSend.push_back(make_pair(scriptChange, BUDGET_FEE_TX)); // 5 YCE collateral
 
     CCoinControl* coinControl = NULL;
     bool success = CreateTransaction(vecSend, tx, reservekey, nFeeRet, strFail, coinControl, ALL_COINS, useIX, (CAmount)0);
@@ -2956,6 +2959,9 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 
     if (nBalance > 0 && nBalance <= nReserveBalance)
         return false;
+
+    // if (chainActive.Height() + 1 < Params().WALLET_UPGRADE_BLOCK() && Params().NetworkID() == CBaseChainParams::MAIN)
+        // return false; // Do not stake until the upgrade block
 
     // Get the list of stakable inputs
     std::list<std::unique_ptr<CStakeInput> > listInputs;
@@ -3978,10 +3984,10 @@ bool CWallet::GetDestData(const CTxDestination& dest, const std::string& key, st
 void CWallet::AutoZeromint()
 {
     // Don't bother Autominting if Zerocoin Protocol isn't active
-    if (GetAdjustedTime() > GetSporkValue(SPORK_16_ZEROCOIN_MAINTENANCE_MODE)) return;
+    if (GetAdjustedTime() > GetSporkValue(SPORK_16_ZEROCOIN_MAINTENANCE_MODE) || chainActive.Height() < Params().Zerocoin_Block_V2_Start()) return;
 
     // Wait until blockchain + masternodes are fully synced and wallet is unlocked.
-    if (!masternodeSync.IsSynced() || IsLocked()){
+    if (IsInitialBlockDownload() /*!masternodeSync.IsSynced()*/ || IsLocked()){
         // Re-adjust startup time in case syncing needs a long time.
         nStartupTime = GetAdjustedTime();
         return;
@@ -4104,7 +4110,7 @@ void CWallet::AutoCombineDust()
             if (!out.fSpendable)
                 continue;
             //no coins should get this far if they dont have proper maturity, this is double checking
-            if (out.tx->IsCoinStake() && out.tx->GetDepthInMainChain() < COINBASE_MATURITY + 1)
+            if (out.tx->IsCoinStake() && out.tx->GetDepthInMainChain() < Params().COINBASE_MATURITY() + 1)
                 continue;
 
             COutPoint outpt(out.tx->GetHash(), out.i);
@@ -5144,6 +5150,9 @@ string CWallet::MintZerocoin(CAmount nValue, CWalletTx& wtxNew, vector<CDetermin
 
     if (nValue + Params().Zerocoin_MintFee() > GetBalance())
         return _("Insufficient funds");
+
+    if (chainActive.Height() < Params().Zerocoin_Block_V2_Start())
+        return _("Zerocoin protocol is not yet active!");
 
     CReserveKey reservekey(this);
     int64_t nFeeRequired;

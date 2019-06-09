@@ -81,6 +81,43 @@ void BIP32Hash(const ChainCode chainCode, unsigned int nChild, unsigned char hea
     CHMAC_SHA512(chainCode.begin(), chainCode.size()).Write(&header, 1).Write(data, 32).Write(num, 4).Finalize(output);
 }
 
+uint256 scrypt_hash(const void* input, size_t inputlen)
+{
+    uint256 result = 0;
+
+    scrypt((const char*)input, inputlen, (const char*)input, inputlen, (char*)&result, 1024, 1, 1, 32);
+
+    return result;
+}
+
+uint256 scrypt_salted_hash(const void* input, size_t inputlen, const void* salt, size_t saltlen)
+{
+    uint256 result = 0;
+
+    scrypt((const char*)input, inputlen, (const char*)salt, saltlen, (char*)&result, 1024, 1, 1, 32);
+
+    return result;
+}
+
+uint256 scrypt_salted_multiround_hash(const void* input, size_t inputlen, const void* salt, size_t saltlen, const unsigned int nRounds)
+{
+    uint256 resultHash = scrypt_salted_hash(input, inputlen, salt, saltlen);
+    uint256 transitionalHash = resultHash;
+
+    for (unsigned int i = 1; i < nRounds; i++)
+    {
+        resultHash = scrypt_salted_hash(input, inputlen, (const void*)&transitionalHash, 32);
+        transitionalHash = resultHash;
+    }
+
+    return resultHash;
+}
+
+uint256 scrypt_blockhash(const void* input)
+{
+    return scrypt_hash(input, 80);
+}
+
 void scrypt_hash(const char* pass, unsigned int pLen, const char* salt, unsigned int sLen, char* output, unsigned int N, unsigned int r, unsigned int p, unsigned int dkLen)
 {
     scrypt(pass, pLen, salt, sLen, output, N, r, p, dkLen);

@@ -1,4 +1,4 @@
-Myce 2.0 upgrade 
+Myce 3.0.1 upgrade 
 =====================================
 
 Open your current wallet > File > Backup Wallet > Save the generated wallet.dat on a safe location
