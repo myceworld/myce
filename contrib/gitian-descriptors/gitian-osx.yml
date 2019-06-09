@@ -1,5 +1,5 @@
 ---
-name: "myce-osx-3.0"
+name: "myce-osx-3.0.1"
 enable_cache: true
 suites:
 - "bionic"
