@@ -5,6 +5,8 @@ Open your current wallet > File > Backup Wallet > Save the generated wallet.dat 
 
 More information at [myce.world](http://www.myce.world)
 
+Information on How to install Myce > https://github.com/myceworld/myce/wiki
+
 
 ### MYCE Blockchain Specification
 
