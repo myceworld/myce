@@ -9,7 +9,6 @@
 
 #include <QDialog>
 
-
 class AddressTableModel;
 class OptionsModel;
 class ClientModel;
@@ -33,7 +32,6 @@ QT_END_NAMESPACE
 class AddressBookPage : public QDialog
 {
     Q_OBJECT
-
 
 public:
     enum Tabs {

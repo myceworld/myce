@@ -43,7 +43,7 @@ bool WalletFrame::addWallet(const QString& name, WalletModel* walletModel)
     if (!gui || !clientModel || !walletModel || mapWalletViews.count(name) > 0)
         return false;
 
-    WalletView* walletView = new WalletView(this);
+    WalletView* walletView = new WalletView(walletStack);
     walletView->setBitcoinGUI(gui);
     walletView->setClientModel(clientModel);
     walletView->setWalletModel(walletModel);
@@ -259,13 +259,10 @@ void WalletFrame::usedSendingAddresses()
 }
 
 void WalletFrame::usedReceivingAddresses()
-
 {
-
     WalletView* walletView = currentWalletView();
     if (walletView)
         walletView->usedReceivingAddresses();
-
 }
 
 WalletView* WalletFrame::currentWalletView()
