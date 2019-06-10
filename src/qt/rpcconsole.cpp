@@ -40,10 +40,6 @@
 #include <QTimer>
 #include <QStringList>
 
-#if QT_VERSION < 0x050000
-#include <QUrl>
-#endif
-
 // TODO: add a scrollback limit, as there is currently none
 // TODO: make it possible to filter out categories (esp debug messages when implemented)
 // TODO: receive errors and debug messages through ClientModel
@@ -83,6 +79,14 @@ public slots:
 
 signals:
     void reply(int category, const QString& command);
+
+private:
+    
+    std::map<std::string, int> nWarnings;
+    
+    bool commandWarningOnExecution(const std::string& command);
+    
+    QString getCommandWarningOnExecution(const std::string& command);
 };
 
 /** Class for handling RPC timers
@@ -227,6 +231,14 @@ void RPCExecutor::request(const QString& command)
     }
     if (args.empty())
         return; // Nothing to do
+    
+    if(commandWarningOnExecution(args[0])) {
+
+        nWarnings[args[0]] = (nWarnings.count(args[0]) == 0 ? 1 : nWarnings[args[0]] + 1);
+        emit reply(RPCConsole::CMD_ERROR, getCommandWarningOnExecution(args[0]));
+        return;
+    }
+
     try {
         std::string strPrint;
         // Convert argument list to JSON objects in method-dependent way,
@@ -256,6 +268,37 @@ void RPCExecutor::request(const QString& command)
         }
     } catch (std::exception& e) {
         emit reply(RPCConsole::CMD_ERROR, QString("Error: ") + QString::fromStdString(e.what()));
+    }
+}
+
+bool RPCExecutor::commandWarningOnExecution(const std::string& command)
+{
+    // Check against nWarnings
+    if(nWarnings.count(command) > 0 && nWarnings.at(command) > 0) {
+
+        return false;
+    }
+
+    return (command == "dumpprivkey" || command == "dumpwallet");
+}
+
+QString RPCExecutor::getCommandWarningOnExecution(const std::string& command)
+{
+    if(command == "dumpprivkey") {
+        return "Warning: This command will print your private key! If someone\n"
+                "gains access to this key you will lose all your coins! Hackers/Scammers\n"
+                "are known to use this method.\n"
+                "Be careful, do not share this information with anyone!!!!";
+    }
+    else if(command == "dumpwallet") {
+        return "Warning: This command will dump your private keys! If someone\n"
+                "gains access to these keys you will lose all your coins! Hackers/Scammers\n"
+                "are known to use this method.\n"
+                "Be careful, do not share this information with anyone!!!!";
+    }
+    else {
+        //  Catch any exceptions
+        return "Warning!";
     }
 }
 
@@ -324,7 +367,9 @@ RPCConsole::RPCConsole(QWidget* parent) : QDialog(parent, Qt::WindowSystemMenuHi
 #endif
     // Register RPC timer interface
     rpcTimerInterface = new QtRPCTimerInterface();
-    RPCRegisterTimerInterface(rpcTimerInterface);
+    // avoid accidentally overwriting an existing, non QTThread
+    // based timer interface
+    RPCSetTimerInterfaceIfUnset(rpcTimerInterface);
 
     startExecutor();
     setTrafficGraphRange(INITIAL_TRAFFIC_GRAPH_MINS);
@@ -338,7 +383,7 @@ RPCConsole::~RPCConsole()
 {
     GUIUtil::saveWindowGeometry("nRPCConsoleWindow", this);
     emit stopExecutor();
-    RPCUnregisterTimerInterface(rpcTimerInterface);
+    RPCUnsetTimerInterface(rpcTimerInterface);
     delete rpcTimerInterface;
     delete ui;
 }
@@ -633,12 +678,22 @@ void RPCConsole::clear()
         "td.message { font-family: Courier, Courier New, Lucida Console, monospace; font-size: 12px; } " // Todo: Remove fixed font-size
         "td.cmd-request { color: #006060; } "
         "td.cmd-error { color: red; } "
+        ".secwarning { color: red; }"
         "b { color: #006060; } ");
 
-    message(CMD_REPLY, (tr("Welcome to the MYCE RPC console.") + "<br>" +
-                           tr("Use up and down arrows to navigate history, and <b>Ctrl-L</b> to clear screen.") + "<br>" +
-                           tr("Type <b>help</b> for an overview of available commands.")),
-        true);
+#ifdef Q_OS_MAC
+    QString clsKey = "(⌘)-L";
+#else
+    QString clsKey = "Ctrl-L";
+#endif
+
+    message(CMD_REPLY, (tr("Welcome to the Myce RPC console.") + "<br>" +
+                        tr("Use up and down arrows to navigate history, and %1 to clear screen.").arg("<b>"+clsKey+"</b>") + "<br>" +
+                        tr("Type <b>help</b> for an overview of available commands.") +
+                        "<br><span class=\"secwarning\"><br>" +
+                        tr("WARNING: Scammers have been active, telling users to type commands here, stealing their wallet contents. Do not use this console without fully understanding the ramifications of a command.") +
+                        "</span>"),
+                        true);
 }
 
 void RPCConsole::reject()

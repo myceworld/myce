@@ -70,6 +70,8 @@ static Checkpoints::MapCheckpoints mapCheckpoints =
     (710000, uint256("6bf18c06e6aef68b04b2768867ddf8b227449ad0bc596070f00efeb5dbc67022"))
     (710001, uint256("61ccc10b583c9b23091398b24877ae2eafccc78ef88967ed12a75ccd49c00814"))
     (711000, uint256("5ebe513252484994fd2192c4395ffa63e0f9d46563dac7b463bb13e5d8c1ef62"))
+    (712796, uint256("d5c88d0651ca72e05b3ae83d42b1bdc1f070bcf4a8aa014a53b6f599aca93c2f"))
+    (712797, uint256("22f129920c98d55eb38e93eab055555eedaa36e8ae5af1d55a8a345f5037208b"))
     (712998, uint256("bbf33319fd9d7831896b5f99d0daec05c8f61aef463b48cb25642202d4ab3e23"));
 
 static const Checkpoints::CCheckpointData data = {
@@ -77,7 +79,7 @@ static const Checkpoints::CCheckpointData data = {
     1559917249, // * UNIX timestamp of last checkpoint block
     1440251,    // * total number of transactions between genesis and last checkpoint
                 //   (the tx=... number in the SetBestChain debug.log lines)
-    4000        // * estimated number of transactions per day after checkpoint
+    2000        // * estimated number of transactions per day after checkpoint
 };
 
 static Checkpoints::MapCheckpoints mapCheckpointsTestnet =
@@ -236,7 +238,7 @@ public:
         nMintRequiredConfirmations = 20; //the maximum amount of confirmations until accumulated in 19
         nRequiredAccumulation = 1;
         nDefaultSecurityLevel = 100; //full security level for accumulators
-        nZerocoinHeaderVersion = 10; //Block headers must be this version once zerocoin is active
+        nZerocoinHeaderVersion = 11; //Block headers must be this version once zerocoin is active
         nZerocoinRequiredStakeDepth = 200; //The required confirmations for a zyce to be stakable
 
         nBudget_Fee_Confirmations = 6; // Number of confirmations for the finalization fee
@@ -287,7 +289,7 @@ public:
         nInvalidAmountFiltered = 0; //Amount of invalid coins filtered through exchanges, that should be considered valid
         nBlockZerocoinV2 = nZerocoinStartHeight + 20; //!> The block that zerocoin v2 becomes active
         nEnforceNewSporkKey = 1521604800; //!> Sporks signed after Wednesday, March 21, 2018 4:00:00 AM GMT must use the new spork key
-        nRejectOldSporkKey = 1522454400; //!> Reject old spork key after Saturday, March 31, 2018 12:00:00 AM GMT
+        nRejectOldSporkKey = nEnforceNewSporkKey; //!> Reject old spork key after Saturday, March 31, 2018 12:00:00 AM GMT
 
         //! Modify the testnet genesis block so the timestamp is valid for a later start.
         //genesis.nTime = 1454124731;
@@ -328,7 +330,7 @@ public:
         nStartMasternodePayments = 1420837558; //Fri, 09 Jan 2015 21:05:58 GMT
         nBudget_Fee_Confirmations = 3; // Number of confirmations for the finalization fee. We have to make this very short
                                        // here because we only have a 8 block finalization window on testnet
-        nZerocoinHeaderVersion = 10; //Block headers must be this version once zerocoin is active
+        //nZerocoinHeaderVersion = 11; //Block headers must be this version once zerocoin is active
     }
     const Checkpoints::CCheckpointData& Checkpoints() const
     {

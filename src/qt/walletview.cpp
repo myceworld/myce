@@ -195,7 +195,6 @@ void WalletView::setWalletModel(WalletModel* walletModel)
     // Put transaction list in tabs
     transactionView->setModel(walletModel);
     overviewPage->setWalletModel(walletModel);
-
     QSettings settings;
     if (settings.value("fShowMasternodesTab").toBool()) {
         masternodeListPage->setWalletModel(walletModel);
@@ -275,9 +274,7 @@ void WalletView::gotoMasternodePage()
 
 void WalletView::gotoReceiveCoinsPage()
 {
-
     setCurrentWidget(receiveCoinsPage);
-
 }
 
 void WalletView::gotoPrivacyPage()
