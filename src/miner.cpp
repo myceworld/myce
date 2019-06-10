@@ -112,7 +112,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
     // Make sure to create the correct block version after zerocoin is enabled
     bool fZerocoinActive = chainActive.Height() + 1 >= Params().Zerocoin_StartHeight();
     if (fZerocoinActive)
-        pblock->nVersion = std::max(Params().Zerocoin_HeaderVersion(), CBlock::CURRENT_VERSION);
+        pblock->nVersion = std::max(Params().Zerocoin_HeaderVersion(), (int) CBlock::CURRENT_VERSION);
     else if (chainActive.Height() + 1 >= Params().ModifierUpgradeBlock())
         pblock->nVersion = 9;
     else
