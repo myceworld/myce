@@ -23,6 +23,7 @@
 #define MASTERNODE_REMOVAL_SECONDS (130 * 60)
 #define MASTERNODE_CHECK_SECONDS 5
 
+#define MN_WINNER_MINIMUM_AGE 8000    // Age in seconds. This should be > MASTERNODE_REMOVAL_SECONDS to avoid misconfigured new nodes in the list.
 
 class CMasternode;
 class CMasternodeBroadcast;
@@ -113,7 +114,7 @@ private:
 
 public:
     enum state {
-        MASTERNODE_PRE_ENABLED,
+        MASTERNODE_ACTIVE,
         MASTERNODE_ENABLED,
         MASTERNODE_EXPIRED,
         MASTERNODE_OUTPOINT_SPENT,
@@ -249,9 +250,9 @@ public:
         lastPing = CMasternodePing();
     }
 
-    bool IsEnabled()
+    bool IsEnabled(bool withActive = true)
     {
-        return activeState == MASTERNODE_ENABLED;
+        return (activeState == MASTERNODE_ENABLED) || (withActive && activeState == MASTERNODE_ACTIVE);
     }
 
     int GetMasternodeInputAge()
@@ -270,8 +271,9 @@ public:
 
     std::string Status()
     {
-        std::string strStatus = "ACTIVE";
+        std::string strStatus = "UNKNOWN";
 
+        if (activeState == CMasternode::MASTERNODE_ACTIVE) strStatus = "ACTIVE";
         if (activeState == CMasternode::MASTERNODE_ENABLED) strStatus = "ENABLED";
         if (activeState == CMasternode::MASTERNODE_EXPIRED) strStatus = "EXPIRED";
         if (activeState == CMasternode::MASTERNODE_VIN_SPENT) strStatus = "VIN_SPENT";
