@@ -633,7 +633,15 @@ bool CMasternodeBroadcast::CheckInputsAndAdd(int& nDoS)
 
     LogPrint("masternode","mnb - Got NEW Masternode entry - %s - %lli \n", vin.prevout.hash.ToString(), sigTime);
     CMasternode mn(*this);
+    // force check state of the masternode based on last ping time
+    // to eliminate possible problems with the statuses received from peers with the wrong system time
+    mn.Check(true);
     mnodeman.Add(mn);
+    // extended verification with block hash of the last masternode ping and exclusion bad broadcasts from the masternode list
+    if (!mn.lastPing.CheckAndUpdate(nDoS, true, false, true)) {
+        mnodeman.Remove(mn.vin);
+        return false;
+    }
 
     // if it matches our Masternode privkey, then we've been remotely activated
     if (pubKeyMasternode == activeMasternode.pubKeyMasternode && protocolVersion == PROTOCOL_VERSION) {
@@ -752,7 +760,7 @@ bool CMasternodePing::VerifySignature(CPubKey& pubKeyMasternode, int &nDos)
     return true;
 }
 
-bool CMasternodePing::CheckAndUpdate(int& nDos, bool fRequireEnabled, bool fCheckSigTimeOnly)
+bool CMasternodePing::CheckAndUpdate(int& nDos, bool fRequireEnabled, bool fCheckSigTimeOnly, bool fSkipCheckPingTimeAndRelay)
 {
     if (sigTime > GetAdjustedTime() + 60 * 60) {
         LogPrint("masternode","CMasternodePing::CheckAndUpdate - Signature rejected, too far into the future %s\n", vin.prevout.hash.ToString());
@@ -782,13 +790,14 @@ bool CMasternodePing::CheckAndUpdate(int& nDos, bool fRequireEnabled, bool fChec
         // LogPrint("masternode","mnping - Found corresponding mn for vin: %s\n", vin.ToString());
         // update only if there is no known ping for this masternode or
         // last ping was more then MASTERNODE_MIN_MNP_SECONDS-60 ago comparing to this one
-        if (!pmn->IsPingedWithin(MASTERNODE_MIN_MNP_SECONDS - 60, sigTime)) {
+        if (!pmn->IsPingedWithin(MASTERNODE_MIN_MNP_SECONDS - 60, sigTime) || fSkipCheckPingTimeAndRelay) {
             if (!VerifySignature(pmn->pubKeyMasternode, nDos))
                 return false;
 
             BlockMap::iterator mi = mapBlockIndex.find(blockHash);
             if (mi != mapBlockIndex.end() && (*mi).second) {
-                if ((*mi).second->nHeight < chainActive.Height() - 24) {
+                // changed for allow ping block hashes within the reorganization window, not sure of usefulness
+                if ((*mi).second->nHeight < chainActive.Height() - Params().MaxReorganizationDepth()) {
                     LogPrint("masternode","CMasternodePing::CheckAndUpdate - Masternode %s block hash %s is too old\n", vin.prevout.hash.ToString(), blockHash.ToString());
                     // Do nothing here (no Masternode update, no mnping relay)
                     // Let this node to be visible but fail to accept mnping
@@ -817,7 +826,10 @@ bool CMasternodePing::CheckAndUpdate(int& nDos, bool fRequireEnabled, bool fChec
 
             LogPrint("masternode", "CMasternodePing::CheckAndUpdate - Masternode ping accepted, vin: %s\n", vin.prevout.hash.ToString());
 
-            Relay();
+            // do not relay extended hash check request
+            if (!fSkipCheckPingTimeAndRelay)
+                Relay();
+
             return true;
         }
         LogPrint("masternode", "CMasternodePing::CheckAndUpdate - Masternode ping arrived too early, vin: %s\n", vin.prevout.hash.ToString());
