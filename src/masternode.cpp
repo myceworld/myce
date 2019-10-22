@@ -196,6 +196,10 @@ void CMasternode::Check(bool forceCheck)
     //once spent, stop doing the checks
     if (activeState == MASTERNODE_VIN_SPENT) return;
 
+    if (IsBroadcastedWithin(MN_WINNER_MINIMUM_AGE)) {
+        activeState = MASTERNODE_ACTIVE;
+        return;
+    }
 
     if (!IsPingedWithin(MASTERNODE_REMOVAL_SECONDS)) {
         activeState = MASTERNODE_REMOVE;
@@ -205,11 +209,6 @@ void CMasternode::Check(bool forceCheck)
     if (!IsPingedWithin(MASTERNODE_EXPIRATION_SECONDS)) {
         activeState = MASTERNODE_EXPIRED;
         return;
-    }
-
-    if(lastPing.sigTime - sigTime < MASTERNODE_MIN_MNP_SECONDS){
-    	activeState = MASTERNODE_PRE_ENABLED;
-    	return;
     }
 
     if (!unitTest) {
@@ -302,8 +301,8 @@ int64_t CMasternode::GetLastPaid()
 std::string CMasternode::GetStatus()
 {
     switch (nActiveState) {
-    case CMasternode::MASTERNODE_PRE_ENABLED:
-        return "PRE_ENABLED";
+    case CMasternode::MASTERNODE_ACTIVE:
+        return "ACTIVE";
     case CMasternode::MASTERNODE_ENABLED:
         return "ENABLED";
     case CMasternode::MASTERNODE_EXPIRED:
@@ -545,7 +544,7 @@ bool CMasternodeBroadcast::CheckAndUpdate(int& nDos)
     }
 
     // masternode is not enabled yet/already, nothing to update
-    if (!pmn->IsEnabled()) return true;
+    if (!pmn->IsEnabled(true)) return true;
 
     // mn.pubkey = pubkey, IsVinAssociatedWithPubkey is validated once below,
     //   after that they just need to match
@@ -554,7 +553,7 @@ bool CMasternodeBroadcast::CheckAndUpdate(int& nDos)
         LogPrint("masternode","mnb - Got updated entry for %s\n", vin.prevout.hash.ToString());
         if (pmn->UpdateFromNewBroadcast((*this))) {
             pmn->Check();
-            if (pmn->IsEnabled()) Relay();
+            if (pmn->IsEnabled(true)) Relay();
         }
         masternodeSync.AddedMasternodeList(GetHash());
     }
@@ -577,7 +576,7 @@ bool CMasternodeBroadcast::CheckInputsAndAdd(int& nDoS)
 
     if (pmn != NULL) {
         // nothing to do here if we already know about this masternode and it's enabled
-        if (pmn->IsEnabled()) return true;
+        if (pmn->IsEnabled(true)) return true;
         // if it's not enabled, remove old MN first and continue
         else
             mnodeman.Remove(pmn->vin);
@@ -781,7 +780,7 @@ bool CMasternodePing::CheckAndUpdate(int& nDos, bool fRequireEnabled, bool fChec
     // see if we have this Masternode
     CMasternode* pmn = mnodeman.Find(vin);
     if (pmn != NULL && pmn->protocolVersion >= masternodePayments.GetMinMasternodePaymentsProto()) {
-        if (fRequireEnabled && !pmn->IsEnabled()) return false;
+        if (fRequireEnabled && !pmn->IsEnabled(true)) return false;
 
         // LogPrint("masternode","mnping - Found corresponding mn for vin: %s\n", vin.ToString());
         // update only if there is no known ping for this masternode or
@@ -817,7 +816,7 @@ bool CMasternodePing::CheckAndUpdate(int& nDos, bool fRequireEnabled, bool fChec
             }
 
             pmn->Check(true);
-            if (!pmn->IsEnabled()) return false;
+            if (!pmn->IsEnabled(true)) return false;
 
             LogPrint("masternode", "CMasternodePing::CheckAndUpdate - Masternode ping accepted, vin: %s\n", vin.prevout.hash.ToString());
 
