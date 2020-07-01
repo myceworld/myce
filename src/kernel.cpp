@@ -156,9 +156,10 @@ bool ComputeNextStakeModifier(const CBlockIndex* pindexPrev, uint64_t& nStakeMod
         return true; // genesis block's modifier is 0
     }
     if (pindexPrev->nHeight == 0) {
-        //Give a stake modifier to the first block
+        // Give a stake modifier to the first block
         fGeneratedStakeModifier = true;
-        nStakeModifier = uint64_t("stakemodifier");
+        //nStakeModifier = uint64_t("stakemodifier"); // This code is nonsense and just reads a garbage number from memory
+        nStakeModifier = 0x7374616b656d6f64; // stakemod
         return true;
     }
 

@@ -28,7 +28,7 @@ class CBlockHeader
 {
 public:
     // header
-    static const int32_t CURRENT_VERSION=11;
+    static const int32_t CURRENT_VERSION=9;
     int32_t nVersion;
     uint256 hashPrevBlock;
     uint256 hashMerkleRoot;
@@ -55,8 +55,8 @@ public:
         READWRITE(nNonce);
 
         //zerocoin active, header changes to include accumulator checksum
-        if (nVersion > 10)
-            READWRITE(nAccumulatorCheckpoint);
+        //if (nVersion > 10)
+            //READWRITE(nAccumulatorCheckpoint);
     }
 
     void SetNull()
@@ -75,6 +75,7 @@ public:
         return (nBits == 0);
     }
 
+    uint256 GetPoWHash() const;
     uint256 GetHash() const;
 
     int64_t GetBlockTime() const
@@ -114,8 +115,8 @@ public:
     inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
         READWRITE(*(CBlockHeader*)this);
         READWRITE(vtx);
-    if(vtx.size() > 1 && vtx[1].IsCoinStake())
-        READWRITE(vchBlockSig);
+        if(vtx.size() > 1 && vtx[1].IsCoinStake())
+            READWRITE(vchBlockSig);
     }
 
     void SetNull()

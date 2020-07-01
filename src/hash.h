@@ -10,11 +10,17 @@
 #define MYCE_HASH_H
 
 #include "crypto/ripemd160.h"
+#include "crypto/scrypt.h"
 #include "crypto/sha256.h"
 #include "serialize.h"
 #include "uint256.h"
 #include "version.h"
 
+#include "crypto/sph_blake.h"
+#include "crypto/sph_groestl.h"
+#include "crypto/sph_jh.h"
+#include "crypto/sph_keccak.h"
+#include "crypto/sph_skein.h"
 #include "crypto/sha512.h"
 
 #include <iomanip>
@@ -82,6 +88,33 @@ public:
         return *this;
     }
 };
+
+#ifdef GLOBALDEFINED
+#define GLOBAL
+#else
+#define GLOBAL extern
+#endif
+
+GLOBAL sph_blake512_context z_blake;
+GLOBAL sph_groestl512_context z_groestl;
+GLOBAL sph_jh512_context z_jh;
+GLOBAL sph_keccak512_context z_keccak;
+GLOBAL sph_skein512_context z_skein;
+
+#define fillz()                          \
+    do {                                 \
+        sph_blake512_init(&z_blake);     \
+        sph_groestl512_init(&z_groestl); \
+        sph_jh512_init(&z_jh);           \
+        sph_keccak512_init(&z_keccak);   \
+        sph_skein512_init(&z_skein);     \
+    } while (0)
+
+#define ZBLAKE (memcpy(&ctx_blake, &z_blake, sizeof(z_blake)))
+#define ZGROESTL (memcpy(&ctx_groestl, &z_groestl, sizeof(z_groestl)))
+#define ZJH (memcpy(&ctx_jh, &z_jh, sizeof(z_jh)))
+#define ZKECCAK (memcpy(&ctx_keccak, &z_keccak, sizeof(z_keccak)))
+#define ZSKEIN (memcpy(&ctx_skein, &z_skein, sizeof(z_skein)))
 
 /* ----------- Bitcoin Hash ------------------------------------------------- */
 /** A hasher class for Bitcoin's 160-bit hash (SHA-256 + RIPEMD-160). */
@@ -279,10 +312,37 @@ unsigned int MurmurHash3(unsigned int nHashSeed, const std::vector<unsigned char
 
 void BIP32Hash(const ChainCode chainCode, unsigned int nChild, unsigned char header, const unsigned char data[32], unsigned char output[64]);
 
-uint256 scrypt_salted_multiround_hash(const void* input, size_t inputlen, const void* salt, size_t saltlen, const unsigned int nRounds);
-uint256 scrypt_salted_hash(const void* input, size_t inputlen, const void* salt, size_t saltlen);
-uint256 scrypt_hash(const void* input, size_t inputlen);
-uint256 scrypt_blockhash(const void* input);
+inline uint256 scrypt_hash(const void* input, size_t inputlen, const unsigned int N=1024)
+{
+    uint256 result;
+    scrypt((const char*)input, inputlen, (const char*)input, inputlen, (char*)&result, N, 1, 1, 32);
+    return result;
+}
+
+inline uint256 scrypt_salted_hash(const void* input, size_t inputlen, const void* salt, size_t saltlen)
+{
+    uint256 result;
+    scrypt((const char*)input, inputlen, (const char*)salt, saltlen, (char*)&result, 1024, 1, 1, 32);
+    return result;
+}
+
+inline uint256 scrypt_salted_multiround_hash(const void* input, size_t inputlen, const void* salt, size_t saltlen, const unsigned int nRounds)
+{
+    uint256 resultHash = scrypt_salted_hash(input, inputlen, salt, saltlen);
+    uint256 transitionalHash = resultHash;
+
+    for (unsigned int i = 1; i < nRounds; i++) {
+        resultHash = scrypt_salted_hash(input, inputlen, (const void*)&transitionalHash, 32);
+        transitionalHash = resultHash;
+    }
+
+    return resultHash;
+}
+
+inline uint256 scrypt_blockhash(const void* input)
+{
+    return scrypt_hash(input, 80);
+}
 
 //int HMAC_SHA512_Init(HMAC_SHA512_CTX *pctx, const void *pkey, size_t len);
 //int HMAC_SHA512_Update(HMAC_SHA512_CTX *pctx, const void *pdata, size_t len);
@@ -293,9 +353,53 @@ template <typename T1>
 inline uint256 HashScrypt(const T1 pbegin, const T1 pend)
 {
     static unsigned char pblank[1];
-    return scrypt_hash((pbegin == pend ? pblank : static_cast<const void*>(&pbegin[0])), (pend - pbegin) * sizeof(pbegin[0])); 
+    return scrypt_hash((pbegin == pend ? pblank : static_cast<const void*>(&pbegin[0])), (pend - pbegin) * sizeof(pbegin[0]));
 }
 
-void scrypt_hash(const char* pass, unsigned int pLen, const char* salt, unsigned int sLen, char* output, unsigned int N, unsigned int r, unsigned int p, unsigned int dkLen);
+/* ----------- Nist5 Hash ------------------------------------------------ */
+template <typename T1>
+inline uint256 HashNist5(const T1 pbegin, const T1 pend)
+{
+    sph_blake512_context ctx_blake;
+    sph_groestl512_context ctx_groestl;
+    sph_jh512_context ctx_jh;
+    sph_keccak512_context ctx_keccak;
+    sph_skein512_context ctx_skein;
+    static unsigned char pblank[1];
+
+    uint512 hash[5];
+
+    sph_blake512_init(&ctx_blake);
+    // ZBLAKE;
+    sph_blake512(&ctx_blake, (pbegin == pend ? pblank : static_cast<const void*>(&pbegin[0])), (pend - pbegin) * sizeof(pbegin[0]));
+    sph_blake512_close(&ctx_blake, static_cast<void*>(&hash[0]));
+
+    sph_groestl512_init(&ctx_groestl);
+    // ZGROESTL;
+    sph_groestl512(&ctx_groestl, static_cast<const void*>(&hash[0]), 64);
+    sph_groestl512_close(&ctx_groestl, static_cast<void*>(&hash[1]));
+
+    sph_jh512_init(&ctx_jh);
+    // ZJH;
+    sph_jh512(&ctx_jh, static_cast<const void*>(&hash[1]), 64);
+    sph_jh512_close(&ctx_jh, static_cast<void*>(&hash[2]));
+
+    sph_keccak512_init(&ctx_keccak);
+    // ZKECCAK;
+    sph_keccak512(&ctx_keccak, static_cast<const void*>(&hash[2]), 64);
+    sph_keccak512_close(&ctx_keccak, static_cast<void*>(&hash[3]));
+
+    sph_skein512_init(&ctx_skein);
+    // SKEIN;
+    sph_skein512(&ctx_skein, static_cast<const void*>(&hash[3]), 64);
+    sph_skein512_close(&ctx_skein, static_cast<void*>(&hash[4]));
+
+    return hash[4].trim256();
+}
+
+inline void scrypt_hash(const char* pass, unsigned int pLen, const char* salt, unsigned int sLen, char* output, unsigned int N, unsigned int r, unsigned int p, unsigned int dkLen)
+{
+    scrypt(pass, pLen, salt, sLen, output, N, r, p, dkLen);
+}
 
 #endif // MYCE_HASH_H

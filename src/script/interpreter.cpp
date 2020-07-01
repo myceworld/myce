@@ -1689,6 +1689,9 @@ public:
     void Serialize(S &s, int nType, int nVersion) const {
         // Serialize nVersion
         ::Serialize(s, txTo.nVersion, nType, nVersion);
+        // Serialize nTime
+        if (txTo.nVersion < 3)
+            ::Serialize(s, txTo.nTime, nType, nVersion);
         // Serialize vin
         unsigned int nInputs = fAnyoneCanPay ? 1 : txTo.vin.size();
         ::WriteCompactSize(s, nInputs);
@@ -1753,7 +1756,7 @@ bool TransactionSignatureChecker::CheckSig(
 
     uint256 sighash = SignatureHash(scriptCode, *txTo, nIn, nHashType);
 
-    if (!(static_cast<uint32_t>(txTo->nVersion) == 1 && txTo->IsCoinStake()) && !VerifySignature(vchSig, pubkey, sighash)) {
+    if (!VerifySignature(vchSig, pubkey, sighash)) {
         return false;
     }
 

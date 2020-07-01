@@ -14,14 +14,17 @@
 #include "utilstrencodings.h"
 #include "util.h"
 
+uint256 CBlockHeader::GetPoWHash() const
+{
+    return scrypt_blockhash(CVOIDBEGIN(nVersion));
+}
+
 uint256 CBlockHeader::GetHash() const
 {
-    if (nVersion > 10)
-        return Hash(BEGIN(nVersion), END(nAccumulatorCheckpoint));
-    else if (nVersion > 6)
+    if (nVersion > 1)
         return Hash(BEGIN(nVersion), END(nNonce));
     else
-        return scrypt_blockhash(CVOIDBEGIN(nVersion));
+        return GetPoWHash();
 }
 
 uint256 CBlock::BuildMerkleTree(bool* fMutated) const
