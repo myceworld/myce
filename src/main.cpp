@@ -6080,7 +6080,6 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
 
         if (GetBoolArg("-headerspamfilter", DEFAULT_HEADER_SPAM_FILTER))
         {
-            LOCK(cs_main);
             CValidationState state;
             CNodeState *nodestate = State(pfrom->GetId());
             nodestate->headers.addHeaders(nFirst, nLast);
