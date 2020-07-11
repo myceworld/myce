@@ -98,7 +98,7 @@ void UpdateTime(CBlockHeader* pblock, const CBlockIndex* pindexPrev, bool fProof
         pblock->nBits = GetNextWorkRequired(pindexPrev, pblock, fProofOfStake);
 }
 
-std::pair<int, std::pair<uint256, uint256> > pCheckpointCache;
+//std::pair<int, std::pair<uint256, uint256> > pCheckpointCache;
 CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, bool fProofOfStake)
 {
     CReserveKey reservekey(pwallet);
@@ -201,7 +201,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
             if (tx.IsCoinBase() || tx.IsCoinStake() || !IsFinalTx(tx, nHeight)){
                 continue;
             }
-            if ((GetAdjustedTime() > GetSporkValue(SPORK_16_ZEROCOIN_MAINTENANCE_MODE) || !fZerocoinActive) && tx.ContainsZerocoins()) {
+            if ((GetAdjustedTime() >= GetSporkValue(SPORK_16_ZEROCOIN_MAINTENANCE_MODE) || !fZerocoinActive) && tx.ContainsZerocoins()) {
                 continue;
             }
 
@@ -359,7 +359,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
                     continue;
 
                 bool fDoubleSerial = false;
-                for (const CTxIn txIn : tx.vin) {
+                for (const CTxIn& txIn : tx.vin) {
                     if (txIn.scriptSig.IsZerocoinSpend()) {
                         libzerocoin::CoinSpend spend = TxInToZerocoinSpend(txIn);
                         bool fUseV1Params = libzerocoin::ExtractVersionFromSerial(spend.getCoinSerialNumber()) < libzerocoin::PrivateCoin::PUBKEY_VERSION;
@@ -404,7 +404,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
             nBlockSigOps += nTxSigOps;
             nFees += nTxFees;
 
-            for (const CBigNum bnSerial : vTxSerials)
+            for (const CBigNum& bnSerial : vTxSerials)
                 vBlockSerials.emplace_back(bnSerial);
 
             if (fPrintPriority) {
@@ -455,7 +455,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
         pblock->nNonce = 0;
 
         //Calculate the accumulator checkpoint only if the previous cached checkpoint need to be updated
-        uint256 nCheckpoint;
+        /*uint256 nCheckpoint;
         uint256 hashBlockLastAccumulated = nHeight >= 20 ? chainActive[nHeight - (nHeight % 10) - 10]->GetBlockHash(): 0;
         if (nHeight >= pCheckpointCache.first || pCheckpointCache.second.first != hashBlockLastAccumulated) {
             //For the period before v2 activation, zYCE will be disabled and previous block's checkpoint is all that will be needed
@@ -475,7 +475,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
             }
         }
 
-        pblock->nAccumulatorCheckpoint = pCheckpointCache.second.second;
+        pblock->nAccumulatorCheckpoint = pCheckpointCache.second.second;*/
         pblocktemplate->vTxSigOps[0] = GetLegacySigOpCount(pblock->vtx[0]);
 
         CValidationState state;
@@ -632,7 +632,7 @@ void BitcoinMiner(CWallet* pwallet, bool fProofOfStake)
         if (!pindexPrev)
             continue;
 
-        unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlockWithKey(reservekey, pwallet, fProofOfStake));
+        unique_ptr<CBlockTemplate> pblocktemplate(fProofOfStake ? CreateNewBlock(CScript(), pwallet, fProofOfStake) : CreateNewBlockWithKey(reservekey, pwallet, fProofOfStake));
         if (!pblocktemplate.get())
             continue;
 

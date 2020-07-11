@@ -916,25 +916,6 @@ int GetInputAge(CTxIn& vin)
     }
 }
 
-int GetInputAgeIX(uint256 nTXHash, CTxIn& vin)
-{
-    int sigs = 0;
-    int nResult = GetInputAge(vin);
-    if (nResult < 0) nResult = 0;
-
-    if (nResult < 6) {
-        std::map<uint256, CTransactionLock>::iterator i = mapTxLocks.find(nTXHash);
-        if (i != mapTxLocks.end()) {
-            sigs = (*i).second.CountSignatures();
-        }
-        if (sigs >= SWIFTTX_SIGNATURES_REQUIRED) {
-            return nSwiftTXDepth + nResult;
-        }
-    }
-
-    return -1;
-}
-
 int GetIXConfirmations(uint256 nTXHash)
 {
     int sigs = 0;
@@ -1315,7 +1296,7 @@ bool AcceptToMemoryPool(CTxMemPool& pool, CValidationState& state, const CTransa
         *pfMissingInputs = false;
 
     // Temporarily disable zerocoin for maintenance
-    if (GetAdjustedTime() > GetSporkValue(SPORK_16_ZEROCOIN_MAINTENANCE_MODE) && tx.ContainsZerocoins())
+    if (GetAdjustedTime() >= GetSporkValue(SPORK_16_ZEROCOIN_MAINTENANCE_MODE) && tx.ContainsZerocoins())
         return state.DoS(10, error("AcceptToMemoryPool : Zerocoin transactions are temporarily disabled for maintenance"), REJECT_INVALID, "bad-tx");
 
     int chainHeight = chainActive.Height();
@@ -1369,8 +1350,8 @@ bool AcceptToMemoryPool(CTxMemPool& pool, CValidationState& state, const CTransa
     // Check for conflicts with in-memory transactions
     if (!tx.IsZerocoinSpend()) {
         LOCK(pool.cs); // protect pool.mapNextTx
-        for (unsigned int i = 0; i < tx.vin.size(); i++) {
-            COutPoint outpoint = tx.vin[i].prevout;
+        for (const auto &in : tx.vin) {
+            COutPoint outpoint = in.prevout;
             if (pool.mapNextTx.count(outpoint)) {
                 // Disable replacement feature for now
                 return false;
@@ -1875,7 +1856,7 @@ bool ReadBlockFromDisk(CBlock& block, const CDiskBlockPos& pos)
 
     // Check the header
     if (block.IsProofOfWork()) {
-        if (!CheckProofOfWork(block.GetHash(), block.nBits))
+        if (!CheckProofOfWork(block.GetPoWHash(), block.nBits))
             return error("ReadBlockFromDisk : Errors in block header");
     }
 
@@ -2208,7 +2189,7 @@ void AddInvalidSpendsToMap(const CBlock& block)
     }
 }
 
-bool ValidOutPoint(const COutPoint out, int nHeight)
+bool ValidOutPoint(const COutPoint& out, int nHeight)
 {
     bool isInvalid = nHeight >= Params().Block_Enforce_Invalid() && invalid_out::ContainsOutPoint(out);
     return !isInvalid;
@@ -2786,7 +2767,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     // Special case for the genesis block, skipping connection of its transactions
     // (its coinbase is unspendable)
     if (block.GetHash() == Params().HashGenesisBlock()) {
-        view.SetBestBlock(pindex->GetBlockHash());
+        if (!fJustCheck)
+            view.SetBestBlock(pindex->GetBlockHash());
         return true;
     }
 
@@ -2905,7 +2887,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                     REJECT_INVALID, "bad-txns-inputs-missingorspent");
 
             // Check that the inputs are not marked as invalid/fraudulent
-            for (CTxIn in : tx.vin) {
+            for (const CTxIn& in : tx.vin) {
                 if (!ValidOutPoint(in.prevout, pindex->nHeight)) {
                     return state.DoS(100, error("%s : tried to spend invalid input %s in tx %s", __func__, in.prevout.ToString(),
                                   tx.GetHash().GetHex()), REJECT_INVALID, "bad-txns-invalid-inputs");
@@ -2996,7 +2978,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     }
 
     // Ensure that accumulator checkpoints are valid and in the same state as this instance of the chain
-    AccumulatorMap mapAccumulators(Params().Zerocoin_Params(pindex->nHeight < Params().Zerocoin_Block_V2_Start()));
+    /*AccumulatorMap mapAccumulators(Params().Zerocoin_Params(pindex->nHeight < Params().Zerocoin_Block_V2_Start()));
     if (!ValidateAccumulatorCheckpoint(block, pindex, mapAccumulators)) {
         if (!ShutdownRequested()) {
             return state.DoS(100, error("%s: Failed to validate accumulator checkpoint for block=%s height=%d", __func__,
@@ -3004,7 +2986,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         }
         return error("%s: Failed to validate accumulator checkpoint for block=%s height=%d because wallet is shutting down", __func__,
                 block.GetHash().GetHex(), pindex->nHeight);
-    }
+    }*/
 
     if (!control.Wait())
         return state.DoS(100, error("%s: CheckQueue failed", __func__), REJECT_INVALID, "block-validation-failed");
@@ -3050,7 +3032,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                     continue;
 
                 //Search block for matching tx, turn into wtx, set merkle branch, add to wallet
-                for (CTransaction tx : block.vtx) {
+                for (const CTransaction& tx : block.vtx) {
                     if (tx.GetHash() == pSpend.second) {
                         CWalletTx wtx(pwalletMain, tx);
                         wtx.nTimeReceived = pindex->GetBlockTime();
@@ -3068,7 +3050,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     if (!zerocoinDB->WriteCoinMintBatch(vMints)) return state.Abort(("Failed to record new mints to database"));
 
     //Record accumulator checksums
-    DatabaseChecksums(mapAccumulators);
+    //DatabaseChecksums(mapAccumulators);
 
     if (fTxIndex)
         if (!pblocktree->WriteTxIndex(vPos))
@@ -3091,8 +3073,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     LogPrint("bench", "    - Callbacks: %.2fms [%.2fs]\n", 0.001 * (nTime4 - nTime3), nTimeCallbacks * 0.000001);
 
     //Continue tracking possible movement of fraudulent funds until they are completely frozen
-    if (pindex->nHeight >= Params().Zerocoin_Block_FirstFraudulent() && pindex->nHeight <= Params().Zerocoin_Block_RecalculateAccumulators() + 1)
-        AddInvalidSpendsToMap(block);
+    //if (pindex->nHeight >= Params().Zerocoin_Block_FirstFraudulent() && pindex->nHeight <= Params().Zerocoin_Block_RecalculateAccumulators() + 1)
+        //AddInvalidSpendsToMap(block);
 
     //Remove zerocoinspends from the pending map
     for (const uint256& txid : vSpendsInBlock) {
@@ -3133,25 +3115,23 @@ bool static FlushStateToDisk(CValidationState& state, FlushStateMode mode)
             // First make sure all block and undo data is flushed to disk.
             FlushBlockFile();
             // Then update all block file information (which may refer to block and undo files).
-            bool fileschanged = false;
-            for (set<int>::iterator it = setDirtyFileInfo.begin(); it != setDirtyFileInfo.end();) {
-                if (!pblocktree->WriteBlockFileInfo(*it, vinfoBlockFile[*it])) {
-                    return state.Abort("Failed to write to block index");
+            {
+                std::vector<std::pair<int, const CBlockFileInfo*> > vFiles;
+                vFiles.reserve(setDirtyFileInfo.size());
+                for (set<int>::iterator it = setDirtyFileInfo.begin(); it != setDirtyFileInfo.end(); ) {
+                    vFiles.push_back(make_pair(*it, &vinfoBlockFile[*it]));
+                    setDirtyFileInfo.erase(it++);
                 }
-                fileschanged = true;
-                setDirtyFileInfo.erase(it++);
-            }
-            if (fileschanged && !pblocktree->WriteLastBlockFile(nLastBlockFile)) {
-                return state.Abort("Failed to write to block index");
-            }
-            for (set<CBlockIndex*>::iterator it = setDirtyBlockIndex.begin(); it != setDirtyBlockIndex.end();) {
-                if (!pblocktree->WriteBlockIndex(CDiskBlockIndex(*it))) {
-                    return state.Abort("Failed to write to block index");
+                std::vector<const CBlockIndex*> vBlocks;
+                vBlocks.reserve(setDirtyBlockIndex.size());
+                for (set<CBlockIndex*>::iterator it = setDirtyBlockIndex.begin(); it != setDirtyBlockIndex.end(); ) {
+                    vBlocks.push_back(*it);
+                    setDirtyBlockIndex.erase(it++);
                 }
-                setDirtyBlockIndex.erase(it++);
+                if (!pblocktree->WriteBatchSync(vFiles, nLastBlockFile, vBlocks)) {
+                    return state.Abort("Files to write to block index database");
+                }
             }
-
-            pblocktree->Sync();
             // Finally flush the chainstate (which may refer to block index entries).
             if (!pcoinsTip->Flush())
                 return state.Abort("Failed to write to coin database");
@@ -3895,37 +3875,9 @@ bool FindUndoPos(CValidationState& state, int nFile, CDiskBlockPos& pos, unsigne
 bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, bool fCheckPOW)
 {
     // Check proof of work matches claimed amount
-    if (fCheckPOW && !CheckProofOfWork(block.GetHash(), block.nBits))
+    if (fCheckPOW && !CheckProofOfWork(block.GetPoWHash(), block.nBits))
         return state.DoS(50, error("CheckBlockHeader() : proof of work failed"),
             REJECT_INVALID, "high-hash");
-
-    if (block.GetHash() != Params().HashGenesisBlock())
-    {
-        if (Params().NetworkID() == CBaseChainParams::MAIN)
-        {
-            // Enforce version 8 after mandatory upgrade block
-            if (mapBlockIndex.at(block.hashPrevBlock)->nHeight+1 >= Params().WALLET_UPGRADE_BLOCK())
-            {
-                if (block.nVersion < Params().WALLET_UPGRADE_VERSION())
-                    return state.DoS(50, error("CheckBlockHeader() : block version must be at least %d after upgrade block", Params().WALLET_UPGRADE_VERSION()), REJECT_INVALID, "block-version");
-            } else {
-                if (block.nVersion >= Params().WALLET_UPGRADE_VERSION())
-                    return state.DoS(50, error("CheckBlockHeader() : block version must be below %d before upgrade block", Params().WALLET_UPGRADE_VERSION()), REJECT_INVALID, "block-version");
-            }
-        }
-
-        // Version 10 header must be used after Params().Zerocoin_StartHeight(). And never before.
-        if (mapBlockIndex.at(block.hashPrevBlock)->nHeight+1 >= Params().Zerocoin_StartHeight())
-        {
-            if (block.nVersion < Params().Zerocoin_HeaderVersion())
-                return state.DoS(50, error("CheckBlockHeader() : block version must be at least %d after ZerocoinStartHeight", Params().Zerocoin_HeaderVersion()),
-                REJECT_INVALID, "block-version");
-        } else {
-            if (block.nVersion >= Params().Zerocoin_HeaderVersion())
-                return state.DoS(50, error("CheckBlockHeader() : block version must be below %d before ZerocoinStartHeight", Params().Zerocoin_HeaderVersion()),
-                REJECT_INVALID, "block-version");
-        }
-    }
 
     return true;
 }
@@ -3936,13 +3888,13 @@ bool CheckBlock(const CBlock& block, CValidationState& state, bool fCheckPOW, bo
 
     // Check that the header is valid (particularly PoW).  This is mostly
     // redundant with the call in AcceptBlockHeader.
-    if (!CheckBlockHeader(block, state, fCheckPOW))
+    if (!CheckBlockHeader(block, state, block.IsProofOfWork()))
         return state.DoS(100, error("CheckBlock() : CheckBlockHeader failed"),
             REJECT_INVALID, "bad-header", true);
 
     // Check timestamp
     LogPrint("debug", "%s: block=%s  is proof of stake=%d\n", __func__, block.GetHash().ToString().c_str(), block.IsProofOfStake());
-    if (Params().NetworkID() != CBaseChainParams::REGTEST && block.GetBlockTime() > GetAdjustedTime() + (block.IsProofOfStake() ? 180 : 7200)) // 3 minute future drift for PoS
+    if (Params().NetworkID() != CBaseChainParams::REGTEST && block.GetBlockTime() > GetAdjustedTime() + 180) // 3 minute future drift for PoS
         return state.Invalid(error("CheckBlock() : block timestamp too far in the future"),
             REJECT_INVALID, "time-too-new");
 
@@ -4049,6 +4001,9 @@ bool CheckBlock(const CBlock& block, CValidationState& state, bool fCheckPOW, bo
     bool fZerocoinActive = nHeight >= Params().Zerocoin_StartHeight();
     vector<CBigNum> vBlockSerials;
     for (const CTransaction& tx : block.vtx) {
+        if (tx.nVersion < 3 && block.nVersion >= Params().WALLET_UPGRADE_VERSION())
+            return state.DoS(100, error("%s : Transaction %s has invalid version %d", __func__, tx.GetHash().ToString(), tx.nVersion),
+                REJECT_INVALID, "bad-txns-version");
         if (!CheckTransaction(tx, fZerocoinActive, nHeight >= Params().Zerocoin_Block_EnforceSerialRange(), state))
             return error("CheckBlock() : CheckTransaction failed");
 
@@ -4078,7 +4033,7 @@ bool CheckBlock(const CBlock& block, CValidationState& state, bool fCheckPOW, bo
     return true;
 }
 
-bool CheckWork(const CBlock block, CBlockIndex* const pindexPrev)
+bool CheckWork(const CBlock& block, CBlockIndex* const pindexPrev)
 {
     if (pindexPrev == NULL)
         return error("%s : null pindexPrev for block %s", __func__, block.GetHash().ToString().c_str());
@@ -4117,7 +4072,7 @@ bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& sta
 
     int nHeight = pindexPrev->nHeight + 1;
 
-    if ((Params().NetworkIDString() == "regtest") && block.nBits != GetNextWorkRequired(pindexPrev, &block, false)) // Perhaps move to ContextualCheckBlock?
+    if ((Params().NetworkID() == CBaseChainParams::REGTEST) && block.nBits != GetNextWorkRequired(pindexPrev, &block, false)) // Perhaps move to ContextualCheckBlock?
         return state.DoS(100, error("%s : incorrect proof of work", __func__),
                 REJECT_INVALID, "bad-diffbits");
 
@@ -4127,10 +4082,33 @@ bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& sta
         return state.DoS(1, error("%s: forked chain older than max reorganization depth (height %d)", __func__, chainActive.Height() - nHeight));
 
     // Check timestamp against prev
-    if ((block.nVersion >= Params().WALLET_UPGRADE_VERSION() || Params().NetworkID() != CBaseChainParams::MAIN) && block.GetBlockTime() <= pindexPrev->GetMedianTimePast() && (Params().NetworkIDString() != "regtest")) {
+    if ((block.nVersion >= Params().WALLET_UPGRADE_VERSION() || Params().NetworkID() != CBaseChainParams::MAIN) && block.GetBlockTime() <= pindexPrev->GetMedianTimePast() && (Params().NetworkID() != CBaseChainParams::REGTEST)) {
         LogPrintf("Block time = %d , GetMedianTimePast = %d \n", block.GetBlockTime(), pindexPrev->GetMedianTimePast());
         return state.Invalid(error("%s : block's timestamp is too early", __func__),
             REJECT_INVALID, "time-too-old");
+    }
+
+    if (Params().NetworkID() == CBaseChainParams::MAIN) {
+        // Enforce version 8 after mandatory upgrade block
+        if (nHeight >= Params().WALLET_UPGRADE_BLOCK())
+        {
+            if (block.nVersion < Params().WALLET_UPGRADE_VERSION())
+                return state.DoS(50, error("ContextualCheckBlockHeader() : block version must be at least %d after upgrade block", Params().WALLET_UPGRADE_VERSION()), REJECT_INVALID, "block-version");
+        } else {
+            if (block.nVersion >= Params().WALLET_UPGRADE_VERSION())
+                return state.DoS(50, error("ContextualCheckBlockHeader() : block version must be below %d before upgrade block", Params().WALLET_UPGRADE_VERSION()), REJECT_INVALID, "block-version");
+        }
+    }
+
+    // Version 11 header must be used after Params().Zerocoin_StartHeight(). And never before.
+    if (nHeight >= Params().Zerocoin_StartHeight()) {
+        if (block.nVersion < Params().Zerocoin_HeaderVersion())
+            return state.DoS(50, error("ContextualCheckBlockHeader() : block version must be at least %d after ZerocoinStartHeight", Params().Zerocoin_HeaderVersion()),
+            REJECT_INVALID, "block-version");
+    } else {
+        if (block.nVersion >= Params().Zerocoin_HeaderVersion())
+            return state.DoS(50, error("ContextualCheckBlockHeader() : block version must be below %d before ZerocoinStartHeight", Params().Zerocoin_HeaderVersion()),
+            REJECT_INVALID, "block-version");
     }
 
     // Check that the block chain matches the known block chain up to a checkpoint
@@ -4214,7 +4192,7 @@ bool AcceptBlockHeader(const CBlockHeader& block, CValidationState& state, CBloc
         return true;
     }
 
-    if (!CheckBlockHeader(block, state, false)) {
+    if (!CheckBlockHeader(block, state, block.nNonce != 0)) { // nNonce = 0 for PoS blocks
         LogPrintf("AcceptBlockHeader(): CheckBlockHeader failed \n");
         return false;
     }
@@ -4525,7 +4503,11 @@ bool ProcessNewBlock(CValidationState& state, CNode* pfrom, CBlock* pblock, CDis
 bool TestBlockValidity(CValidationState& state, const CBlock& block, CBlockIndex* const pindexPrev, bool fCheckPOW, bool fCheckMerkleRoot)
 {
     AssertLockHeld(cs_main);
-    assert(pindexPrev && pindexPrev == chainActive.Tip());
+    assert(pindexPrev);
+    if (pindexPrev != chainActive.Tip()) {
+        LogPrintf("%s : No longer working on chain tip\n", __func__);
+        return false;
+    }
 
     CCoinsViewCache viewNew(pcoinsTip);
     CBlockIndex indexDummy(block);
@@ -4642,8 +4624,11 @@ bool static LoadBlockIndexDB(string& strError)
         CBlockIndex* pindex = item.second;
         vSortedByHeight.push_back(make_pair(pindex->nHeight, pindex));
     }
-    sort(vSortedByHeight.begin(), vSortedByHeight.end());
-    BOOST_FOREACH (const PAIRTYPE(int, CBlockIndex*) & item, vSortedByHeight) {
+    std::sort(vSortedByHeight.begin(), vSortedByHeight.end());
+    for (const PAIRTYPE(int, CBlockIndex*) & item : vSortedByHeight) {
+        // Stop if shutdown was requested
+        if (ShutdownRequested()) return false;
+
         CBlockIndex* pindex = item.second;
         pindex->nChainWork = (pindex->pprev ? pindex->pprev->nChainWork : 0) + GetBlockProof(*pindex);
         if (pindex->nStatus & BLOCK_HAVE_DATA) {
@@ -6095,7 +6080,6 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
 
         if (GetBoolArg("-headerspamfilter", DEFAULT_HEADER_SPAM_FILTER))
         {
-            LOCK(cs_main);
             CValidationState state;
             CNodeState *nodestate = State(pfrom->GetId());
             nodestate->headers.addHeaders(nFirst, nLast);

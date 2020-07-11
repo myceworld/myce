@@ -1,5 +1,5 @@
 // Copyright (c) 2014-2016 The Dash Developers
-// Copyright (c) 2016-2018 The Pivx developers 
+// Copyright (c) 2016-2018 The Pivx developers
 // Copyright (c) 2018 The Myce developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -263,6 +263,16 @@ void MasternodeList::updateNodeList()
     std::vector<CMasternode> vMasternodes = mnodeman.GetFullMasternodeVector();
 
     BOOST_FOREACH (CMasternode& mn, vMasternodes) {
+        if (strCurrentFilter != "") {
+            strToFilter = QString::fromStdString(mn.addr.ToString()) + " " +
+                          QString::number(mn.protocolVersion) + " " +
+                          QString::fromStdString(mn.GetStatus()) + " " +
+                          QString::number(mn.lastPing.sigTime - mn.sigTime) + " " +
+                          QString::fromStdString(DateTimeStrFormat("%Y-%m-%d %H:%M", mn.lastPing.sigTime)) + " " +
+                          QString::fromStdString(CBitcoinAddress(mn.pubKeyCollateralAddress.GetID()).ToString());
+            if (!strToFilter.contains(strCurrentFilter)) continue;
+        }
+
         // populate list
         // Address, Protocol, Status, Active Seconds, Last Seen, Pub Key
         QTableWidgetItem* addressItem = new QTableWidgetItem(QString::fromStdString(mn.addr.ToString()));
@@ -271,16 +281,6 @@ void MasternodeList::updateNodeList()
         GUIUtil::DHMSTableWidgetItem* activeSecondsItem = new GUIUtil::DHMSTableWidgetItem(mn.lastPing.sigTime - mn.sigTime);
         QTableWidgetItem* lastSeenItem = new QTableWidgetItem(QString::fromStdString(DateTimeStrFormat("%Y-%m-%d %H:%M", mn.lastPing.sigTime)));
         QTableWidgetItem* pubkeyItem = new QTableWidgetItem(QString::fromStdString(CBitcoinAddress(mn.pubKeyCollateralAddress.GetID()).ToString()));
-
-        if (strCurrentFilter != "") {
-            strToFilter = addressItem->text() + " " +
-                          protocolItem->text() + " " +
-                          statusItem->text() + " " +
-                          activeSecondsItem->text() + " " +
-                          lastSeenItem->text() + " " +
-                          pubkeyItem->text();
-            if (!strToFilter.contains(strCurrentFilter)) continue;
-        }
 
         ui->tableWidgetMasternodes->insertRow(0);
         ui->tableWidgetMasternodes->setItem(0, 0, addressItem);

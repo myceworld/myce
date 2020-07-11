@@ -27,7 +27,7 @@ public:
     CScriptID(const uint160& in) : uint160(in) {}
 };
 
-static const unsigned int MAX_OP_RETURN_RELAY = 83;      //!< bytes (+1 for OP_RETURN, +2 for the pushdata opcodes)
+static const unsigned int MAX_OP_RETURN_RELAY = 223;      //!< bytes (+1 for OP_RETURN, +2 for the pushdata opcodes)
 extern unsigned nMaxDatacarrierBytes;
 
 /**
@@ -45,8 +45,7 @@ static const uint32_t MANDATORY_SCRIPT_VERIFY_FLAGS =
     SCRIPT_VERIFY_NULLDUMMY | SCRIPT_VERIFY_SIGPUSHONLY |
     SCRIPT_VERIFY_MINIMALDATA | SCRIPT_VERIFY_CLEANSTACK |
     SCRIPT_VERIFY_MINIMALIF | SCRIPT_VERIFY_NULLFAIL |
-    SCRIPT_VERIFY_CHECKLOCKTIMEVERIFY | SCRIPT_VERIFY_CHECKSEQUENCEVERIFY |
-    SCRIPT_ENABLE_CHECKDATASIG;
+    SCRIPT_VERIFY_CHECKLOCKTIMEVERIFY;
 
 /**
  * Standard script verification flags that standard transactions will comply

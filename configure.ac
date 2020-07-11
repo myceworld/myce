@@ -2,10 +2,10 @@ dnl require autoconf 2.60 (AS_ECHO/AS_ECHO_N)
 AC_PREREQ([2.60])
 define(_CLIENT_VERSION_MAJOR, 3)
 define(_CLIENT_VERSION_MINOR, 0)
-define(_CLIENT_VERSION_REVISION, 2)
+define(_CLIENT_VERSION_REVISION, 3)
 define(_CLIENT_VERSION_BUILD, 0)
 define(_CLIENT_VERSION_IS_RELEASE, true)
-define(_COPYRIGHT_YEAR, 2019)
+define(_COPYRIGHT_YEAR, 2020)
 AC_INIT([Myce],[_CLIENT_VERSION_MAJOR._CLIENT_VERSION_MINOR._CLIENT_VERSION_REVISION],[myce.world],[myce])
 AC_CONFIG_SRCDIR([src/main.cpp])
 AC_CONFIG_HEADERS([src/config/myce-config.h])
@@ -232,6 +232,7 @@ if test "x$CXXFLAGS_overridden" = "xno"; then
   AX_CHECK_COMPILE_FLAG([-Wunused-local-typedef],[CXXFLAGS="$CXXFLAGS -Wno-unused-local-typedef"],,[[$CXXFLAG_WERROR]])
   AX_CHECK_COMPILE_FLAG([-Wdeprecated-register],[CXXFLAGS="$CXXFLAGS -Wno-deprecated-register"],,[[$CXXFLAG_WERROR]])
   AX_CHECK_COMPILE_FLAG([-Wimplicit-fallthrough],[CXXFLAGS="$CXXFLAGS -Wno-implicit-fallthrough"],,[[$CXXFLAG_WERROR]])
+  AX_CHECK_COMPILE_FLAG([-Wdeprecated-copy],[CXXFLAGS="$CXXFLAGS -Wno-deprecated-copy"],,[[$CXXFLAG_WERROR]])
 fi
 CPPFLAGS="$CPPFLAGS -DHAVE_BUILD_INFO -D__STDC_FORMAT_MACROS"
 

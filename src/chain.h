@@ -233,8 +233,9 @@ public:
         nTime = block.nTime;
         nBits = block.nBits;
         nNonce = block.nNonce;
-        if (block.nVersion > 10)
-            nAccumulatorCheckpoint = block.nAccumulatorCheckpoint;
+        //if (block.nVersion > 10)
+            //nAccumulatorCheckpoint = block.nAccumulatorCheckpoint;
+        nAccumulatorCheckpoint = 0;
 
         //Proof of Stake
         bnChainTrust = uint256();
@@ -453,9 +454,9 @@ public:
         hashNext = uint256();
     }
 
-    explicit CDiskBlockIndex(CBlockIndex* pindex) : CBlockIndex(*pindex)
+    explicit CDiskBlockIndex(const CBlockIndex* pindex) : CBlockIndex(*pindex)
     {
-        hashPrev = (pprev ? pprev->GetBlockHash() : uint256());
+        hashPrev = (pprev ? pprev->GetBlockHash() : uint256(0));
     }
 
     ADD_SERIALIZE_METHODS;
@@ -498,11 +499,6 @@ public:
         READWRITE(nTime);
         READWRITE(nBits);
         READWRITE(nNonce);
-        if (this->nVersion > 10) {
-            READWRITE(nAccumulatorCheckpoint);
-            READWRITE(mapZerocoinSupply);
-            READWRITE(vMintDenominationsInBlock);
-        }
 
     }
 
