@@ -4070,16 +4070,21 @@ bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& sta
 
     assert(pindexPrev);
 
-    int nHeight = pindexPrev->nHeight + 1;
+    const int nHeight = pindexPrev->nHeight + 1;
+    const int chainHeight = chainActive.Height();
 
     if ((Params().NetworkID() == CBaseChainParams::REGTEST) && block.nBits != GetNextWorkRequired(pindexPrev, &block, false)) // Perhaps move to ContextualCheckBlock?
         return state.DoS(100, error("%s : incorrect proof of work", __func__),
                 REJECT_INVALID, "bad-diffbits");
 
-    //If this is a reorg, check that it is not too deep
-    int nMaxReorgDepth = GetArg("-maxreorg", Params().MaxReorganizationDepth());
-    if (chainActive.Height() - nHeight >= nMaxReorgDepth)
-        return state.DoS(1, error("%s: forked chain older than max reorganization depth (height %d)", __func__, chainActive.Height() - nHeight));
+    // If this is a reorg and we have been synced for at least an hour, check that it is not too deep
+    const int nMaxReorgDepth = GetArg("-maxreorg", Params().MaxReorganizationDepth());
+    static int64_t nReorgCheckTime = GetTime() + 60 * 60;
+    static bool fCheckReorgDepth = false;
+    if (!fCheckReorgDepth && GetTime() >= nReorgCheckTime)
+        fCheckReorgDepth = true;
+    if (nMaxReorgDepth >= 0 && fCheckReorgDepth && chainHeight - nHeight >= nMaxReorgDepth)
+        return state.DoS(1, error("%s: forked chain older than max reorganization depth (height %d)", __func__, chainHeight - nHeight));
 
     // Check timestamp against prev
     if ((block.nVersion >= Params().WALLET_UPGRADE_VERSION() || Params().NetworkID() != CBaseChainParams::MAIN) && block.GetBlockTime() <= pindexPrev->GetMedianTimePast() && (Params().NetworkID() != CBaseChainParams::REGTEST)) {
