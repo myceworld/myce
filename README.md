@@ -1,7 +1,10 @@
-Myce 3.0.2 upgrade 
+Myce Blockchain
 =====================================
 
-Open your current wallet > File > Backup Wallet > Save the generated wallet.dat on a safe location
+https://github.com/myceworld/myce/releases
+
+
+Wallet > File > Backup Wallet > Save the generated wallet.dat on a safe location.
 
 More information at [myce.world](http://www.myce.world)
 
@@ -18,6 +21,7 @@ Information on How to install Myce > https://github.com/myceworld/myce/wiki
 <tr> <td>Staking Age</td><td>6 hours</td></tr>
 <tr> <td>Retarget</td><td>60 seconds</td></tr>
 <tr> <td>Masternode Collateral</td><td>100,000</td></tr>
-<tr> <td>Masternode share</td><td>80.00%</td></tr>
 <tr> <td>Private transactions</td><td>Yes</td></tr>
+<tr> <td>Atomic swaps</td><td>Yes</td></tr>
 </table>
+
