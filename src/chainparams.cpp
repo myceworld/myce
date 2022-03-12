@@ -87,12 +87,19 @@ static Checkpoints::MapCheckpoints mapCheckpoints =
     (1600000, uint256("80be5bc4ecfe07baaacb66e6aaa735a75164a0d860bba533ac7378f5aa25de2c"))
     (1700000, uint256("d96aa73d3085cbc6fd89e10a7c2a0e2a15fd4db210c3ded69880b4f1f1699296"))
     (1800000, uint256("ac46b02d147c2d53f93377d356b854fd6c6fbe195c88a27d6596748e158b43cb"))
-    (1830000, uint256("6166e5d8e3f60308ef234c24744186efc01a67206c5282e8c6d1d66bfaf94479"));
+    (1830000, uint256("6166e5d8e3f60308ef234c24744186efc01a67206c5282e8c6d1d66bfaf94479"))
+    (1850000, uint256("67a5a0bf3d6a887a19be8ffe023399a779cd1ae77897e55fc6caa4aead5213e7"))
+    (1870000, uint256("bc52599aac461de34399e8ab6e9d2db83043cadd10c0e81ef30acdddeddab3ab"))
+    (1890000, uint256("cc2986bcb6be4bbfb046454a0841d77066692e0bf5faf4368355ced334a62947"))
+    (1910000, uint256("19b251a1644ecf5a014ddd06de63e0df8fb73b7570d5be355dff0c25197a152d"))
+    (1930000, uint256("e81fe446519bfd6b543557584af4c824c820b54e3888890a6c330db742298224"))
+    (1950000, uint256("1d67f34bb91c1d437eaa9d76ba10520b8c8a0252683c1e679426c5583584d57c"))
+    (1955640, uint256("eaa89514ba7abb7516871599c92ebb788a8f8ef5c156a8b69698b874fb1db777"));
 
 static const Checkpoints::CCheckpointData data = {
     &mapCheckpoints,
-    1593582976, // * UNIX timestamp of last checkpoint block
-    2423517,    // * total number of transactions between genesis and last checkpoint
+    1646999284, // * UNIX timestamp of last checkpoint block
+    3963163,    // * total number of transactions between genesis and last checkpoint
                 //   (the tx=... number in the SetBestChain debug.log lines)
     2000        // * estimated number of transactions per day after checkpoint
 };
@@ -211,11 +218,12 @@ public:
         assert(genesis.hashMerkleRoot == uint256("0x8ea58063fe9e14c45dbf5efab5b3812291074f6b1af5305b7b45647bdbfdea90"));
         assert(hashGenesisBlock == uint256("0x0000c74cc66c72cb1a327c5c1d4893ae5276aa50be49fb23cec21df1a2f20d87"));
 
-        vSeeds.push_back(CDNSSeedData("1", "seed1.myce.world"));
-        vSeeds.push_back(CDNSSeedData("2", "seed2.myce.world"));
-        vSeeds.push_back(CDNSSeedData("3", "seed3.myce.world"));
-        vSeeds.push_back(CDNSSeedData("4", "seed4.myce.world"));
-        vSeeds.push_back(CDNSSeedData("5", "seed5.myce.world"));
+        vSeeds.push_back(CDNSSeedData("1", "yce.zentec.network"));
+        vSeeds.push_back(CDNSSeedData("2", "seed1.myce.world"));
+        vSeeds.push_back(CDNSSeedData("3", "seed2.myce.world"));
+        vSeeds.push_back(CDNSSeedData("4", "seed3.myce.world"));
+        vSeeds.push_back(CDNSSeedData("5", "seed4.myce.world"));
+        vSeeds.push_back(CDNSSeedData("6", "seed5.myce.world"));
 
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1, 50);
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1, 85);
