@@ -345,7 +345,7 @@ void CMasternodeMan::Clear()
     nDsqCount = 0;
 }
 
-int CMasternodeMan::stable_size ()
+int CMasternodeMan::stable_size()
 {
     int nStable_size = 0;
     int nMinProtocol = ActiveProtocol();
@@ -362,7 +362,7 @@ int CMasternodeMan::stable_size ()
                 continue; // Skip masternodes younger than (default) 8000 sec (MUST be > MASTERNODE_REMOVAL_SECONDS)
             }
         }
-        mn.Check ();
+        mn.Check();
         if (!mn.IsEnabled(false))
             continue; // Skip not-enabled masternodes
 
