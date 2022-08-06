@@ -207,7 +207,9 @@ private:
     void UpdateHash() const;
 
 public:
-    static const int32_t CURRENT_VERSION=1;
+    static const int32_t CURRENT_VERSION = 3;
+
+    static const uint32_t FIRST_FORK_VERSION = 3;
 
     // The local variables are made const to prevent unintended modification
     // without updating the cached hash value. However, CTransaction is not
@@ -233,7 +235,7 @@ public:
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
         READWRITE(*const_cast<int32_t*>(&this->nVersion));
-        if (static_cast<uint32_t>(this->nVersion) < 3) {
+        if (static_cast<uint32_t>(this->nVersion) < CTransaction::FIRST_FORK_VERSION) {
             READWRITE(*const_cast<uint32_t*>(&nTime));
         }
         READWRITE(*const_cast<std::vector<CTxIn>*>(&vin));
@@ -316,7 +318,7 @@ struct CMutableTransaction
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
         READWRITE(this->nVersion);
-        if (static_cast<uint32_t>(this->nVersion) < 3) {
+        if (static_cast<uint32_t>(this->nVersion) < CTransaction::FIRST_FORK_VERSION) {
             READWRITE(nTime);
         }
         READWRITE(vin);

@@ -1062,7 +1062,7 @@ public:
         // Serialize nVersion
         ::Serialize(s, txTo.nVersion, nType, nVersion);
         // Serialize nTime
-        if (static_cast<uint32_t>(txTo.nVersion) < 3) {
+        if (static_cast<uint32_t>(txTo.nVersion) < CTransaction::FIRST_FORK_VERSION) {
             ::Serialize(s, txTo.nTime, nType, nVersion);
         }
         // Serialize vin

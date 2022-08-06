@@ -699,7 +699,7 @@ unsigned int LimitOrphanTxSize(unsigned int nMaxOrphans)
 bool IsStandardTx(const CTransaction& tx, std::string& reason)
 {
     AssertLockHeld(cs_main);
-    if (tx.nVersion > CTransaction::CURRENT_VERSION || tx.nVersion < 1) {
+    if (static_cast<uint32_t>(tx.nVersion) > CTransaction::CURRENT_VERSION || static_cast<uint32_t>(tx.nVersion) < CTransaction::FIRST_FORK_VERSION) {
         reason = "version";
         return false;
     }
@@ -4460,7 +4460,13 @@ bool CheckBlock(const CBlock& block, CValidationState& state, bool fCheckPOW, bo
     std::vector<CBigNum> vBlockSerials;
     // TODO: Check if this is ok... blockHeight is always the tip or should we look for the prevHash and get the height?
     int blockHeight = chainActive.Height() + 1;
+    const bool fEnforceNewTransactionVersion = static_cast<uint32_t>(block.nVersion) >= 8;
     for (const CTransaction& tx : block.vtx) {
+        if (static_cast<uint32_t>(tx.nVersion) < CTransaction::FIRST_FORK_VERSION && fEnforceNewTransactionVersion) {
+            return state.DoS(100, error("%s : Transaction %s has invalid version %d", __func__, tx.GetHash().ToString(), tx.nVersion),
+                REJECT_INVALID, "bad-txns-version");
+        }
+
         if (!CheckTransaction(
                 tx,
                 fZerocoinActive,
